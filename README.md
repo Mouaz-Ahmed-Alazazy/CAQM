@@ -3,13 +3,13 @@ CAQM is a software engineering course project designed to simplifiy and speed up
 The project applies object-oriented design principles and follow software engineering best practices, with clear component separation (Authentication, Patient, Doctor, Admin, Appointment, Queue, and Notification).
 
 ## The CAQM system is divided into several components:
-Authentication: Secure login and registration for all users.
-Patient Module: Appointment booking, viewing queues, and receiving notifications.
-Doctor Module: Managing patient queues and viewing appointment details.
-Admin Module: Overseeing the system, managing users, and maintaining records.
-Appointment: Managing scheduling.
-Queue: keep traking the queue status and informe the patient of changes. 
-Notification: Sends reminders and updates to users.
+* Authentication: Secure login and registration for all users.
+* Patient Module: Appointment booking, viewing queues, and receiving notifications.
+* Doctor Module: Managing patient queues and viewing appointment details.
+* Admin Module: Overseeing the system, managing users, and maintaining records.
+* Appointment: Managing scheduling.
+* Queue: keep traking the queue status and informe the patient of changes. 
+* Notification: Sends reminders and updates to users.
 
 ## to run the program you have to ensure that you have the following installed:
 * [python 3.10](https://www.python.org/)
@@ -41,4 +41,5 @@ python manage.py migrate
 ### 2. Run the server:
 python manage.py runserver
 
-### 3. To access the system click on the link http://127.0.0.1:8000/
+### 3. To access the system:
+click on the link http://127.0.0.1:8000/
