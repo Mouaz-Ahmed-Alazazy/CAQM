@@ -88,3 +88,51 @@ class PatientRegistrationView(CreateView):
     def form_invalid(self, form):
         messages.error(self.request, 'Please correct the errors below.')
         return super().form_invalid(form)
+    
+class CustomLoginView(LoginView):
+    """Custom login view with role-based redirects"""
+    template_name = 'accounts/login.html'
+    redirect_authenticated_user = True
+    
+    def get_form(self, form_class=None):
+        """Override to customize the form"""
+        form = super().get_form(form_class)
+        # Customize form fields
+        form.fields['username'].label = 'Email'
+        form.fields['username'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Email',
+            'autofocus': True
+        })
+        form.fields['password'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Password'
+        })
+        return form
+    
+    def get_success_url(self):
+        """Redirect based on user role"""
+        user = self.request.user
+        if user.is_doctor():
+            return reverse_lazy('appointments:doctor_dashboard')
+        elif user.is_patient():
+            return reverse_lazy('appointments:book_appointment')
+        else:
+            return reverse_lazy('admin:index')
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Welcome back, {form.get_user().get_full_name()}!')
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Invalid email or password')
+        return super().form_invalid(form)
+
+
+class CustomLogoutView(LogoutView):
+    """Custom logout view"""
+    next_page = reverse_lazy('accounts:login')
+    
+    def dispatch(self, request, *args, **kwargs):
+        messages.success(request, 'You have been logged out successfully.')
+        return super().dispatch(request, *args, **kwargs)
