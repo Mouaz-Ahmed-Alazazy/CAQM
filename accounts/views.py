@@ -59,3 +59,32 @@ class PatientRegistrationForm(forms.ModelForm):
             Patient.objects.create(user=user)
         
         return user
+
+
+class PatientRegistrationView(CreateView):
+    """Patient registration view - only patients can self-register"""
+    model = User
+    form_class = PatientRegistrationForm
+    template_name = 'accounts/patient_register.html'
+    success_url = reverse_lazy('appointments:book_appointment')
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Redirect authenticated users
+        if request.user.is_authenticated:
+            if request.user.is_patient():
+                return redirect('appointments:my_appointments')
+            elif request.user.is_doctor():
+                return redirect('appointments:doctor_dashboard')
+        return super().dispatch(request, *args, **kwargs)
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        # Auto login after registration
+        from django.contrib.auth import login
+        login(self.request, self.object, backend='django.contrib.auth.backends.ModelBackend')
+        messages.success(self.request, 'Registration successful! Welcome to CAQM.')
+        return response
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Please correct the errors below.')
+        return super().form_invalid(form)
