@@ -43,6 +43,3 @@ python manage.py runserver
 
 ### 3. To access the system:
 click on the link http://127.0.0.1:8000/
-
-
-TEDT
