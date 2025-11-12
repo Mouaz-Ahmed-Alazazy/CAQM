@@ -1,0 +1,221 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Doctor Dashboard - CAQM{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <h2><i class="fas fa-user-md"></i> Welcome, Dr. {{ doctor.user.get_full_name }}</h2>
+        <p class="text-muted">{{ doctor.get_specialization_display }}</p>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5><i class="fas fa-calendar-day"></i> Today's Appointments</h5>
+                <h2>{{ today_appointments.count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5><i class="fas fa-calendar-check"></i> Upcoming Appointments</h5>
+                <h2>{{ upcoming_appointments.count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5><i class="fas fa-clock"></i> Availability Days Set</h5>
+                <h2>{{ availabilities.count }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Set Availability -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Set Your Availability</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="availability_form" value="1">
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Day of Week *</label>
+                            {{ form.day_of_week }}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Start Time *</label>
+                            {{ form.start_time }}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">End Time *</label>
+                            {{ form.end_time }}
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">Slot Duration (min) *</label>
+                            {{ form.slot_duration }}
+                        </div>
+                        <div class="col-md-1 mb-3">
+                            <label class="form-label">Active</label>
+                            <div class="form-check">
+                                {{ form.is_active }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Availability
+                    </button>
+                </form>
+
+                {% if availabilities %}
+                <hr>
+                <h6 class="mt-4">Current Availability Schedule</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Slot Duration</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for avail in availabilities %}
+                            <tr>
+                                <td><strong>{{ avail.get_day_of_week_display }}</strong></td>
+                                <td>{{ avail.start_time|time:"h:i A" }}</td>
+                                <td>{{ avail.end_time|time:"h:i A" }}</td>
+                                <td>{{ avail.slot_duration }} minutes</td>
+                                <td>
+                                    {% if avail.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'appointments:delete_availability' avail.id %}" 
+                                       class="btn btn-sm btn-danger"
+                                       onclick="return confirm('Are you sure you want to delete this availability?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Appointments -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0"><i class="fas fa-calendar-day"></i> Today's Appointments</h5>
+            </div>
+            <div class="card-body">
+                {% if today_appointments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Patient Name</th>
+                                    <th>Phone</th>
+                                    <th>Status</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in today_appointments %}
+                                <tr>
+                                    <td><strong>{{ appointment.start_time|time:"h:i A" }}</strong></td>
+                                    <td>{{ appointment.patient.user.get_full_name }}</td>
+                                    <td>{{ appointment.patient.user.phone }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ appointment.get_status_display }}</span>
+                                    </td>
+                                    <td>{{ appointment.notes|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No appointments scheduled for today.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upcoming Appointments -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-calendar-week"></i> Upcoming Appointments</h5>
+            </div>
+            <div class="card-body">
+                {% if upcoming_appointments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Patient Name</th>
+                                    <th>Phone</th>
+                                    <th>Status</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in upcoming_appointments %}
+                                <tr>
+                                    <td>{{ appointment.appointment_date|date:"M d, Y" }}</td>
+                                    <td>{{ appointment.start_time|time:"h:i A" }}</td>
+                                    <td>{{ appointment.patient.user.get_full_name }}</td>
+                                    <td>{{ appointment.patient.user.phone }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ appointment.get_status_display }}</span>
+                                    </td>
+                                    <td>{{ appointment.notes|truncatewords:10|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No upcoming appointments found.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

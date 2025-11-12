@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import CreateView
 from django.urls import reverse_lazy
 from django.contrib import messages
+from django.shortcuts import redirect
 from django import forms
 from .models import User, Patient
 
@@ -27,9 +28,17 @@ class PatientRegistrationForm(forms.ModelForm):
             'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last Name'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+1234567890'}),
+            'phone': forms.TextInput(attrs={
+                'class': 'form-control', 
+                'placeholder': '0911234567',
+                'pattern': '(091|092|093|094)[0-9]{7}',
+                'title': 'Phone number must start with 091, 092, 093, or 094 followed by 7 digits'
+            }),
             'date_of_birth': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'gender': forms.Select(attrs={'class': 'form-control'}),
+        }
+        help_texts = {
+            'phone': 'Format: 091xxxxxxx, 092xxxxxxx, 093xxxxxxx, or 094xxxxxxx'
         }
     
     def clean_email(self):
@@ -38,13 +47,24 @@ class PatientRegistrationForm(forms.ModelForm):
             raise forms.ValidationError('Email already registered')
         return email
     
+    def clean_phone(self):
+        phone = self.cleaned_data.get('phone')
+        if phone:
+            # Ensure phone is exactly 10 digits and starts with correct prefix
+            import re
+            if not re.match(r'^(091|092|093|094)\d{7}$', phone):
+                raise forms.ValidationError(
+                    'Phone number must be in format: 091xxxxxxx, 092xxxxxxx, 093xxxxxxx, or 094xxxxxxx'
+                )
+        return phone
+    
     def clean(self):
         cleaned_data = super().clean()
         password1 = cleaned_data.get('password1')
         password2 = cleaned_data.get('password2')
         
         if password1 and password2 and password1 != password2:
-            raise forms.ValidationError('Passwords do not match')
+            self.add_error('password2', 'Passwords do not match')
         
         return cleaned_data
     
@@ -86,9 +106,10 @@ class PatientRegistrationView(CreateView):
         return response
     
     def form_invalid(self, form):
-        messages.error(self.request, 'Please correct the errors below.')
+        # Don't show generic error message, errors are displayed per field
         return super().form_invalid(form)
-    
+
+
 class CustomLoginView(LoginView):
     """Custom login view with role-based redirects"""
     template_name = 'accounts/login.html'
@@ -125,7 +146,7 @@ class CustomLoginView(LoginView):
         return super().form_valid(form)
     
     def form_invalid(self, form):
-        messages.error(self.request, 'Invalid email or password')
+        # Don't show generic message, show specific errors
         return super().form_invalid(form)
 
 

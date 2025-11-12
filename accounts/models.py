@@ -41,8 +41,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     phone_regex = RegexValidator(
-        regex=r'^\+?1?\d{9,13}$',
-        message="Phone number must be entered in the format: '+999999999999'. Up to 13 digits allowed."
+        regex=r'^(091|092|093|094)\d{7}$',
+        message="Phone number must be in the format: '091xxxxxxx', '092xxxxxxx', '093xxxxxxx', or '094xxxxxxx' (10 digits total)."
     )
     phone = models.CharField(validators=[phone_regex], max_length=17, blank=True)
     date_of_birth = models.DateField()
@@ -88,7 +88,11 @@ class Patient(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True, related_name='patient_profile')
     address = models.TextField(blank=True)
-    emergency_contact = models.CharField(max_length=17, blank=True)
+    emergency_regex = RegexValidator(
+        regex=r'^(091|092|093|094)\d{7}$',
+        message="Emergency contact number must be in the format: '091xxxxxxx', '092xxxxxxx', '093xxxxxxx', or '094xxxxxxx' (10 digits total)."
+    )
+    emergency_contact = models.CharField(validators=[emergency_regex], max_length=10, blank=True)
     
     class Meta:
         db_table = 'patients'

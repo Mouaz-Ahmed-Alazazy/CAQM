@@ -16,74 +16,97 @@
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ form.first_name.label }}</label>
+                            <label class="form-label">First Name *</label>
                             {{ form.first_name }}
                             {% if form.first_name.errors %}
-                                <div class="text-danger small">{{ form.first_name.errors.0 }}</div>
+                                {% for error in form.first_name.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
                             {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ form.last_name.label }}</label>
+                            <label class="form-label">Last Name *</label>
                             {{ form.last_name }}
                             {% if form.last_name.errors %}
-                                <div class="text-danger small">{{ form.last_name.errors.0 }}</div>
+                                {% for error in form.last_name.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
                             {% endif %}
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">{{ form.email.label }}</label>
+                        <label class="form-label">Email *</label>
                         {{ form.email }}
                         {% if form.email.errors %}
-                            <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                            {% for error in form.email.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
                         {% endif %}
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">{{ form.phone.label }}</label>
+                        <label class="form-label">Phone Number *</label>
                         {{ form.phone }}
+                        <small class="form-text text-muted d-block">
+                            <i class="fas fa-info-circle"></i> Format: 091xxxxxxx, 092xxxxxxx, 093xxxxxxx, or 094xxxxxxx
+                        </small>
                         {% if form.phone.errors %}
-                            <div class="text-danger small">{{ form.phone.errors.0 }}</div>
+                            {% for error in form.phone.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
                         {% endif %}
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ form.date_of_birth.label }}</label>
+                            <label class="form-label">Date of Birth *</label>
                             {{ form.date_of_birth }}
                             {% if form.date_of_birth.errors %}
-                                <div class="text-danger small">{{ form.date_of_birth.errors.0 }}</div>
+                                {% for error in form.date_of_birth.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
                             {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ form.gender.label }}</label>
+                            <label class="form-label">Gender *</label>
                             {{ form.gender }}
                             {% if form.gender.errors %}
-                                <div class="text-danger small">{{ form.gender.errors.0 }}</div>
+                                {% for error in form.gender.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
                             {% endif %}
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">{{ form.password.label }}</label>
-                        {{ form.password }}
-                        <small class="form-text text-muted">{{ form.password.help_text }}</small>
-                        {% if form.password.errors %}
-                            <div class="text-danger small">{{ form.password.errors.0 }}</div>
+                        <label class="form-label">Password *</label>
+                        {{ form.password1 }}
+                        <small class="form-text text-muted d-block">
+                            Password must be at least 8 characters
+                        </small>
+                        {% if form.password1.errors %}
+                            {% for error in form.password1.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
                         {% endif %}
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label">{{ form.confirm_password.label }}</label>
-                        {{ form.confirm_password }}
-                        {% if form.confirm_password.errors %}
-                            <div class="text-danger small">{{ form.confirm_password.errors.0 }}</div>
+                        <label class="form-label">Confirm Password *</label>
+                        {{ form.password2 }}
+                        {% if form.password2.errors %}
+                            {% for error in form.password2.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
                         {% endif %}
                     </div>
 
                     {% if form.non_field_errors %}
                         <div class="alert alert-danger">
-                            {{ form.non_field_errors.0 }}
+                            {% for error in form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
                         </div>
                     {% endif %}
 

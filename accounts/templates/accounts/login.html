@@ -15,25 +15,31 @@
                     {% csrf_token %}
 
                     <div class="mb-3">
-                        <label class="form-label">{{ form.username.label }}</label>
+                        <label class="form-label">Email</label>
                         {{ form.username }}
                         {% if form.username.errors %}
-                        <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                            {% for error in form.username.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
                         {% endif %}
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label">{{ form.password.label }}</label>
+                        <label class="form-label">Password</label>
                         {{ form.password }}
                         {% if form.password.errors %}
-                        <div class="text-danger small">{{ form.password.errors.0 }}</div>
+                            {% for error in form.password.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
                         {% endif %}
                     </div>
 
                     {% if form.non_field_errors %}
-                    <div class="alert alert-danger">
-                        {{ form.non_field_errors.0 }}
-                    </div>
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
                     {% endif %}
 
                     <button type="submit" class="btn btn-primary w-100 py-2">
@@ -42,13 +48,12 @@
                 </form>
 
                 <div class="text-center mt-3">
-                    <p>Don't have an account? <a href="{% url 'accounts:patient_register' %}">Register as Patient</a>
-                    </p>
+                    <p>Don't have an account? <a href="{% url 'accounts:patient_register' %}">Register as Patient</a></p>
                 </div>
 
                 <hr>
 
-                <div class="alert alert-info text-center">
+                <div class="alert alert-info text-center mb-0">
                     <small><i class="fas fa-info-circle"></i> Doctors: Contact admin for account creation</small>
                 </div>
             </div>

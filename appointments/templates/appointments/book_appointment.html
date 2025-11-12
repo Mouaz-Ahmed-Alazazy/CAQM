@@ -1,0 +1,137 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Book Appointment - CAQM{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-body p-5">
+                <h2 class="card-title mb-4">
+                    <i class="fas fa-calendar-plus"></i> Book New Appointment
+                </h2>
+
+                <form method="post" id="bookingForm">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ form.doctor.label }} *</label>
+                            {{ form.doctor }}
+                            {% if form.doctor.errors %}
+                                <div class="text-danger small">{{ form.doctor.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ form.appointment_date.label }} *</label>
+                            {{ form.appointment_date }}
+                            {% if form.appointment_date.errors %}
+                                <div class="text-danger small">{{ form.appointment_date.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Available Time Slots *</label>
+                        {{ form.start_time }}
+                        <small class="text-muted">Please select a doctor and date to see available time slots</small>
+                        {% if form.start_time.errors %}
+                            <div class="text-danger small">{{ form.start_time.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">{{ form.notes.label }}</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                            <div class="text-danger small">{{ form.notes.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Important:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>You cannot book more than one appointment with the same specialization on the same day</li>
+                            <li>Each doctor has a maximum of 15 appointments per day</li>
+                            <li>Please arrive 15 minutes before your appointment</li>
+                        </ul>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                        <i class="fas fa-calendar-check"></i> Book Appointment
+                    </button>
+                    <a href="{% url 'appointments:my_appointments' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to My Appointments
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    const doctorSelect = $('#id_doctor');
+    const dateInput = $('#id_appointment_date');
+    const timeSlotSelect = $('#id_start_time');
+    const submitBtn = $('#submitBtn');
+
+    function loadAvailableSlots() {
+        const doctorId = doctorSelect.val();
+        const date = dateInput.val();
+
+        if (!doctorId || !date) {
+            timeSlotSelect.html('<option value="">Select doctor and date first</option>');
+            submitBtn.prop('disabled', true);
+            return;
+        }
+
+        // Show loading
+        timeSlotSelect.html('<option value="">Loading available slots...</option>');
+        submitBtn.prop('disabled', true);
+
+        // Fetch available slots
+        $.ajax({
+            url: '{% url "appointments:get_available_slots" %}',
+            data: {
+                doctor_id: doctorId,
+                date: date
+            },
+            success: function(response) {
+                timeSlotSelect.empty();
+                
+                if (response.error) {
+                    timeSlotSelect.html(`<option value="">Error: ${response.error}</option>`);
+                    return;
+                }
+
+                if (response.slots && response.slots.length > 0) {
+                    timeSlotSelect.append('<option value="">Select a time slot</option>');
+                    response.slots.forEach(function(slot) {
+                        timeSlotSelect.append(`<option value="${slot.time}">${slot.display}</option>`);
+                    });
+                } else {
+                    timeSlotSelect.html('<option value="">No available slots for this date</option>');
+                }
+            },
+            error: function() {
+                timeSlotSelect.html('<option value="">Error loading slots</option>');
+            }
+        });
+    }
+
+    // Load slots when doctor or date changes
+    doctorSelect.on('change', loadAvailableSlots);
+    dateInput.on('change', loadAvailableSlots);
+
+    // Enable submit button only when time slot is selected
+    timeSlotSelect.on('change', function() {
+        submitBtn.prop('disabled', !$(this).val());
+    });
+});
+</script>
+{% endblock %}
