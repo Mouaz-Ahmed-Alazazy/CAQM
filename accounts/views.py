@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from django import forms
 from .models import User, Patient
+from .notifications import NotificationService
 
 class PatientRegistrationForm(forms.ModelForm):
     """Inline form for patient registration - no separate forms.py needed"""
@@ -82,7 +83,11 @@ class PatientRegistrationForm(forms.ModelForm):
 
 
 class PatientRegistrationView(CreateView):
-    """Patient registration view - only patients can self-register"""
+    """
+    Patient registration view - only patients can self-register.
+    Matches sequence diagram: GET/POST /register/ -> render_form -> is_valid 
+    -> create_user -> create_session -> send_notification -> redirect
+    """
     model = User
     form_class = PatientRegistrationForm
     template_name = 'accounts/patient_register.html'
@@ -98,10 +103,22 @@ class PatientRegistrationView(CreateView):
         return super().dispatch(request, *args, **kwargs)
     
     def form_valid(self, form):
+        """Handle successful form submission - follows sequence diagram flow"""
         response = super().form_valid(form)
-        # Auto login after registration
+        
+        # Auto login after registration (create_session in sequence diagram)
         from django.contrib.auth import login
         login(self.request, self.object, backend='django.contrib.auth.backends.ModelBackend')
+        
+        # Send registration confirmation notification (as per sequence diagram)
+        try:
+            NotificationService.send_registration_confirmation(self.object)
+        except Exception as e:
+            # Don't block registration if notification fails
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send registration notification: {e}")
+        
         messages.success(self.request, 'Registration successful! Welcome to CAQM.')
         return response
     
@@ -111,7 +128,11 @@ class PatientRegistrationView(CreateView):
 
 
 class CustomLoginView(LoginView):
-    """Custom login view with role-based redirects"""
+    """
+    Custom login view with role-based redirects.
+    Matches sequence diagram: GET/POST /login/ -> is_valid -> authenticate 
+    -> validate_password -> validate_session -> set_session_cookie -> redirect
+    """
     template_name = 'accounts/login.html'
     redirect_authenticated_user = True
     
@@ -155,5 +176,6 @@ class CustomLogoutView(LogoutView):
     next_page = reverse_lazy('accounts:login')
     
     def dispatch(self, request, *args, **kwargs):
-        messages.success(request, 'You have been logged out successfully.')
+        if request.user.is_authenticated:
+            messages.success(request, 'You have been logged out successfully.')
         return super().dispatch(request, *args, **kwargs)

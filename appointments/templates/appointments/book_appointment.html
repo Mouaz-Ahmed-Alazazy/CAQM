@@ -13,13 +13,13 @@
 
                 <form method="post" id="bookingForm">
                     {% csrf_token %}
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">{{ form.doctor.label }} *</label>
                             {{ form.doctor }}
                             {% if form.doctor.errors %}
-                                <div class="text-danger small">{{ form.doctor.errors.0 }}</div>
+                            <div class="text-danger small">{{ form.doctor.errors.0 }}</div>
                             {% endif %}
                         </div>
 
@@ -27,17 +27,22 @@
                             <label class="form-label">{{ form.appointment_date.label }} *</label>
                             {{ form.appointment_date }}
                             {% if form.appointment_date.errors %}
-                                <div class="text-danger small">{{ form.appointment_date.errors.0 }}</div>
+                            <div class="text-danger small">{{ form.appointment_date.errors.0 }}</div>
                             {% endif %}
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Available Time Slots *</label>
-                        {{ form.start_time }}
-                        <small class="text-muted">Please select a doctor and date to see available time slots</small>
+                        <select id="id_start_time" name="start_time" class="form-select form-control" required style="display: block !important; height: auto !important; min-height: 38px !important; 
+                                       appearance: auto !important; -webkit-appearance: menulist !important; 
+                                       -moz-appearance: menulist !important; cursor: pointer !important;">
+                            <option value="">Select date and doctor first</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">Please select a doctor and date to see available time
+                            slots</small>
                         {% if form.start_time.errors %}
-                            <div class="text-danger small">{{ form.start_time.errors.0 }}</div>
+                        <div class="text-danger small">{{ form.start_time.errors.0 }}</div>
                         {% endif %}
                     </div>
 
@@ -45,7 +50,7 @@
                         <label class="form-label">{{ form.notes.label }}</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                            <div class="text-danger small">{{ form.notes.errors.0 }}</div>
+                        <div class="text-danger small">{{ form.notes.errors.0 }}</div>
                         {% endif %}
                     </div>
 
@@ -53,7 +58,8 @@
                         <i class="fas fa-info-circle"></i>
                         <strong>Important:</strong>
                         <ul class="mb-0 mt-2">
-                            <li>You cannot book more than one appointment with the same specialization on the same day</li>
+                            <li>You cannot book more than one appointment with the same specialization on the same day
+                            </li>
                             <li>Each doctor has a maximum of 15 appointments per day</li>
                             <li>Please arrive 15 minutes before your appointment</li>
                         </ul>
@@ -74,64 +80,111 @@
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    const doctorSelect = $('#id_doctor');
-    const dateInput = $('#id_appointment_date');
-    const timeSlotSelect = $('#id_start_time');
-    const submitBtn = $('#submitBtn');
+    console.log('=== Booking form script loaded ===');
+    console.log('jQuery version:', typeof $ !== 'undefined' ? $.fn.jquery : 'jQuery not loaded!');
 
-    function loadAvailableSlots() {
-        const doctorId = doctorSelect.val();
-        const date = dateInput.val();
+    $(document).ready(function () {
+        console.log('=== Document ready ===');
 
-        if (!doctorId || !date) {
-            timeSlotSelect.html('<option value="">Select doctor and date first</option>');
+        const doctorSelect = $('#id_doctor');
+        const dateInput = $('#id_appointment_date');
+        const timeSlotSelect = $('#id_start_time');
+        const submitBtn = $('#submitBtn');
+
+        console.log('Form elements found:', {
+            doctor: doctorSelect.length,
+            date: dateInput.length,
+            timeSlot: timeSlotSelect.length,
+            submit: submitBtn.length
+        });
+
+        function loadAvailableSlots() {
+            const doctorId = doctorSelect.val();
+            const date = dateInput.val();
+
+            console.log('=== loadAvailableSlots called ===');
+            console.log('Doctor ID:', doctorId);
+            console.log('Date:', date);
+
+            if (!doctorId || !date) {
+                console.log('Missing doctor or date, showing placeholder');
+                timeSlotSelect.html('<option value="">Select doctor and date first</option>');
+                submitBtn.prop('disabled', true);
+                return;
+            }
+
+            // Show loading
+            console.log('Showing loading message');
+            timeSlotSelect.html('<option value="">Loading available slots...</option>');
             submitBtn.prop('disabled', true);
-            return;
+
+            const ajaxUrl = '{% url "appointments:get_available_slots" %}';
+            console.log('Making AJAX request to:', ajaxUrl);
+            console.log('Request parameters:', { doctor_id: doctorId, date: date });
+
+            //  Fetch available slots
+            $.ajax({
+                url: ajaxUrl,
+                method: 'GET',
+                data: {
+                    doctor_id: doctorId,
+                    date: date
+                },
+                success: function (response) {
+                    console.log('=== AJAX SUCCESS ===');
+                    console.log('Response:', response);
+
+                    timeSlotSelect.empty();
+
+                    if (response.error) {
+                        console.error('Server returned error:', response.error);
+                        timeSlotSelect.html(`<option value="">Error: ${response.error}</option>`);
+                        return;
+                    }
+
+                    if (response.slots && response.slots.length > 0) {
+                        console.log('Found ' + response.slots.length + ' slots');
+                        timeSlotSelect.append('<option value="">Select a time slot</option>');
+                        response.slots.forEach(function (slot) {
+                            console.log('Adding slot:', slot.time, '-', slot.display);
+                            timeSlotSelect.append(`<option value="${slot.time}">${slot.display}</option>`);
+                        });
+                        console.log('Slots added successfully');
+                    } else {
+                        console.warn('No slots available');
+                        timeSlotSelect.html('<option value="">No available slots for this date</option>');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('=== AJAX ERROR ===');
+                    console.error('Status:', status);
+                    console.error('Error:', error);
+                    console.error('Response status:', xhr.status);
+                    console.error('Response text:', xhr.responseText);
+                    timeSlotSelect.html('<option value="">Error loading slots - check console</option>');
+                }
+            });
         }
 
-        // Show loading
-        timeSlotSelect.html('<option value="">Loading available slots...</option>');
-        submitBtn.prop('disabled', true);
-
-        // Fetch available slots
-        $.ajax({
-            url: '{% url "appointments:get_available_slots" %}',
-            data: {
-                doctor_id: doctorId,
-                date: date
-            },
-            success: function(response) {
-                timeSlotSelect.empty();
-                
-                if (response.error) {
-                    timeSlotSelect.html(`<option value="">Error: ${response.error}</option>`);
-                    return;
-                }
-
-                if (response.slots && response.slots.length > 0) {
-                    timeSlotSelect.append('<option value="">Select a time slot</option>');
-                    response.slots.forEach(function(slot) {
-                        timeSlotSelect.append(`<option value="${slot.time}">${slot.display}</option>`);
-                    });
-                } else {
-                    timeSlotSelect.html('<option value="">No available slots for this date</option>');
-                }
-            },
-            error: function() {
-                timeSlotSelect.html('<option value="">Error loading slots</option>');
-            }
+        // Load slots when doctor or date changes
+        doctorSelect.on('change', function () {
+            console.log('*** Doctor changed to:', $(this).val());
+            loadAvailableSlots();
         });
-    }
 
-    // Load slots when doctor or date changes
-    doctorSelect.on('change', loadAvailableSlots);
-    dateInput.on('change', loadAvailableSlots);
+        dateInput.on('change', function () {
+            console.log('*** Date changed to:', $(this).val());
+            loadAvailableSlots();
+        });
 
-    // Enable submit button only when time slot is selected
-    timeSlotSelect.on('change', function() {
-        submitBtn.prop('disabled', !$(this).val());
+        // Enable submit button only when time slot is selected
+        timeSlotSelect.on('change', function () {
+            const val = $(this).val();
+            console.log('Time slot selected:', val);
+            submitBtn.prop('disabled', !val);
+        });
+
+        console.log('=== Event handlers attached ===');
     });
-});
 </script>
 {% endblock %}
