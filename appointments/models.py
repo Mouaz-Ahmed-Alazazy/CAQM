@@ -74,9 +74,9 @@ class Appointment(models.Model):
             raise ValidationError('Cannot book appointment in the past')
         
         # Check if patient already has appointment with same specialization on same day
-        if self.patient:
+        if self.patient_id and self.doctor:
             existing = Appointment.objects.filter(
-                patient=self.patient,
+                patient=self.patient_id,
                 appointment_date=self.appointment_date,
                 doctor__specialization=self.doctor.specialization,
                 status__in=['SCHEDULED', 'CHECKED_IN']
@@ -90,7 +90,7 @@ class Appointment(models.Model):
         
         # Check doctor's max appointments per day (15)
         if self.doctor:
-            appointments_count = Appointment.objects.filter(
+            appointments_count = Appointment.objects.filter(    
                 doctor=self.doctor,
                 appointment_date=self.appointment_date,
                 status__in=['SCHEDULED', 'CHECKED_IN']
@@ -102,4 +102,3 @@ class Appointment(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
-    

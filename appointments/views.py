@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 
 from .models import Appointment, DoctorAvailability
 from accounts.models import Doctor, Patient
+from .services import AppointmentService, ScheduleService
+from accounts.notifications import NotificationService
 
 
 class PatientRequiredMixin(UserPassesTestMixin):
@@ -37,7 +39,11 @@ class DoctorRequiredMixin(UserPassesTestMixin):
 
 
 class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
-    """Book new appointment - using inline form definition"""
+    """
+    Book new appointment - matches sequence diagram:
+    GET /appointments/book/ -> get_all_doctors -> render_form
+    POST -> book_appointment -> send_notifications -> redirect
+    """
     model = Appointment
     template_name = 'appointments/book_appointment.html'
     success_url = reverse_lazy('appointments:my_appointments')
@@ -78,32 +84,48 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
         return form
     
     def form_valid(self, form):
-        appointment = form.save(commit=False)
-        appointment.patient = self.request.user.patient_profile
+        """Handle successful booking - follows sequence diagram with AppointmentService"""
+        patient = self.request.user.patient_profile
+        doctor = form.cleaned_data['doctor']
+        appointment_date = form.cleaned_data['appointment_date']
+        start_time = form.cleaned_data['start_time']
+        notes = form.cleaned_data.get('notes', '')
         
-        # Calculate end time based on slot duration
-        doctor = appointment.doctor
-        day_of_week = appointment.appointment_date.strftime('%A').upper()
-        availability = DoctorAvailability.objects.filter(
+        # Use AppointmentService to book (as per sequence diagram)
+        success, result = AppointmentService.book_appointment(
+            patient=patient,
             doctor=doctor,
-            day_of_week=day_of_week,
-            is_active=True
-        ).first()
+            appointment_date=appointment_date,
+            start_time=start_time,
+            notes=notes
+        )
         
-        if availability:
-            start_datetime = datetime.combine(appointment.appointment_date, appointment.start_time)
-            end_datetime = start_datetime + timedelta(minutes=availability.slot_duration)
-            appointment.end_time = end_datetime.time()
-        else:
-            messages.error(self.request, 'Doctor is not available on this day')
-            return self.form_invalid(form)
-        
-        try:
-            appointment.save()
+        if success:
+            appointment = result
+            # Send notifications to both patient and doctor (as per sequence diagram)
+            try:
+                NotificationService.send_booking_confirmation(
+                    self.request.user,
+                    doctor_name=f"Dr. {doctor.user.get_full_name()}",
+                    date=appointment_date.strftime('%Y-%m-%d'),
+                    time=start_time.strftime('%I:%M %p')
+                )
+                NotificationService.send_new_appointment_notification(
+                    doctor.user,
+                    patient_name=patient.user.get_full_name(),
+                    date=appointment_date.strftime('%Y-%m-%d'),
+                    time=start_time.strftime('%I:%M %p')
+                )
+            except Exception as e:
+                # Don't block booking if notification fails
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send booking notifications: {e}")
+            
             messages.success(self.request, 'Appointment booked successfully!')
-            return super().form_valid(form)
-        except Exception as e:
-            messages.error(self.request, str(e))
+            return redirect(self.success_url)
+        else:
+            messages.error(self.request, result)
             return self.form_invalid(form)
     
     def get_context_data(self, **kwargs):
@@ -113,7 +135,10 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
 
 
 class GetAvailableSlotsView(LoginRequiredMixin, View):
-    """AJAX view to get available slots - returns JSON"""
+    """
+    AJAX view to get available slots - returns JSON
+    Matches sequence diagram: AJAX GET /api/available_slots/ -> get_available_slots -> return JSON
+    """
     
     def get(self, request, *args, **kwargs):
         doctor_id = request.GET.get('doctor_id')
@@ -123,7 +148,6 @@ class GetAvailableSlotsView(LoginRequiredMixin, View):
             return JsonResponse({'slots': []})
         
         try:
-            doctor = Doctor.objects.get(pk=doctor_id)
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
             
             if date < timezone.now().date():
@@ -132,18 +156,31 @@ class GetAvailableSlotsView(LoginRequiredMixin, View):
                     'error': 'Cannot book appointment in the past'
                 })
             
-            available_slots = doctor.get_available_slots_for_date(date)
-            slots_data = [
-                {
+            # Use AppointmentService to get available slots
+            available_slots = AppointmentService.get_available_slots(doctor_id, date)
+            
+            # Get slot duration for display formatting
+            day_of_week = date.strftime('%A').upper()
+            availability = DoctorAvailability.objects.filter(
+                doctor_id=doctor_id,
+                day_of_week=day_of_week,
+                is_active=True
+            ).first()
+            
+            slot_duration = availability.slot_duration if availability else 30
+            
+            slots_data = []
+            for slot in available_slots:
+                start_dt = datetime.combine(date, slot)
+                end_dt = start_dt + timedelta(minutes=slot_duration)
+                display_str = f"{start_dt.strftime('%I:%M %p')} - {end_dt.strftime('%I:%M %p')}"
+                
+                slots_data.append({
                     'time': slot.strftime('%H:%M'),
-                    'display': slot.strftime('%I:%M %p')
-                }
-                for slot in available_slots
-            ]
+                    'display': display_str
+                })
             
             return JsonResponse({'slots': slots_data})
-        except Doctor.DoesNotExist:
-            return JsonResponse({'slots': [], 'error': 'Doctor not found'})
         except Exception as e:
             return JsonResponse({'slots': [], 'error': str(e)})
 
@@ -191,17 +228,18 @@ class MyAppointmentsView(LoginRequiredMixin, PatientRequiredMixin, ListView):
 
 
 class DoctorDashboardView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView):
-    """Doctor dashboard - view appointments and manage availability"""
+    """
+    Doctor dashboard - view appointments and manage availability
+    Supports schedule update matching sequence diagram
+    """
     template_name = 'appointments/doctor_dashboard.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         doctor = self.request.user.doctor_profile
         
-        # Get availabilities
-        context['availabilities'] = DoctorAvailability.objects.filter(
-            doctor=doctor
-        ).order_by('day_of_week')
+        # Get availabilities using ScheduleService
+        context['availabilities'] = ScheduleService.get_doctor_schedule(doctor)
         
         # Get upcoming appointments
         upcoming = Appointment.objects.filter(
@@ -243,7 +281,10 @@ class DoctorDashboardView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView)
         return AvailabilityForm()
     
     def post(self, request, *args, **kwargs):
-        """Handle availability form submission"""
+        """
+        Handle availability form submission
+        Matches sequence diagram: POST /doctor/schedule/update/ -> update_schedule
+        """
         if 'availability_form' in request.POST:
             AvailabilityForm = modelform_factory(
                 DoctorAvailability,
@@ -252,14 +293,24 @@ class DoctorDashboardView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView)
             form = AvailabilityForm(request.POST)
             
             if form.is_valid():
-                availability = form.save(commit=False)
-                availability.doctor = request.user.doctor_profile
+                # Use ScheduleService to update schedule
+                schedule_data = [{
+                    'day_of_week': form.cleaned_data['day_of_week'],
+                    'start_time': form.cleaned_data['start_time'],
+                    'end_time': form.cleaned_data['end_time'],
+                    'slot_duration': form.cleaned_data['slot_duration'],
+                    'is_active': form.cleaned_data['is_active']
+                }]
                 
-                try:
-                    availability.save()
-                    messages.success(request, 'Availability set successfully')
-                except Exception as e:
-                    messages.error(request, f'Error: {str(e)}')
+                success, message = ScheduleService.update_schedule(
+                    request.user.doctor_profile,
+                    schedule_data
+                )
+                
+                if success:
+                    messages.success(request, message)
+                else:
+                    messages.error(request, message)
             else:
                 messages.error(request, 'Please correct the errors in the form')
         
