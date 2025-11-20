@@ -2,6 +2,10 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from accounts.models import Patient, Doctor
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class DoctorAvailability(models.Model):
     """Doctor's working schedule"""
@@ -30,7 +34,11 @@ class DoctorAvailability(models.Model):
         verbose_name_plural = 'Doctor Availabilities'
     
     def __str__(self):
-        return f"{self.doctor} - {self.get_day_of_week_display()}: {self.start_time}-{self.end_time}"
+        try:
+            return f"{self.doctor} - {self.get_day_of_week_display()}: {self.start_time}-{self.end_time}"
+        except Exception as e:
+            logger.error(f"Error in DoctorAvailability.__str__: {e}")
+            return f"DoctorAvailability {self.pk}"
     
     def clean(self):
         if self.start_time >= self.end_time:
@@ -66,7 +74,11 @@ class Appointment(models.Model):
         unique_together = ['doctor', 'appointment_date', 'start_time']
     
     def __str__(self):
-        return f"{self.patient} with {self.doctor} on {self.appointment_date} at {self.start_time}"
+        try:
+            return f"{self.patient} with {self.doctor} on {self.appointment_date} at {self.start_time}"
+        except Exception as e:
+            logger.error(f"Error in Appointment.__str__: {e}")
+            return f"Appointment {self.pk}"
     
     def clean(self):
         """Validate appointment rules"""
@@ -102,3 +114,26 @@ class Appointment(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class PatientForm(models.Model):
+    """Patient medical history and information forms"""
+    
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='medical_forms')
+    chief_complaint = models.TextField(help_text="Main reason for visit")
+    medical_history = models.TextField(blank=True, help_text="Past medical conditions")
+    current_medications = models.TextField(blank=True, help_text="Current medications being taken")
+    allergies = models.TextField(blank=True, help_text="Known allergies")
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'patient_forms'
+        ordering = ['-submitted_at']
+    
+    def __str__(self):
+        try:
+            return f"Form by {self.patient} - {self.submitted_at.strftime('%Y-%m-%d')}"
+        except Exception as e:
+            logger.error(f"Error in PatientForm.__str__: {e}")
+            return f"PatientForm {self.pk}"

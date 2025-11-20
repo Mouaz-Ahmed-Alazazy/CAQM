@@ -43,22 +43,23 @@ class NotificationService:
             logger.error(f"Invalid notification type: {notification_type}")
             return False
         
-        notification_config = cls.NOTIFICATION_TYPES[notification_type]
-        subject = notification_config['subject']
-        message_template = notification_config['template']
-        
-        # Fill in template with context data if provided
-        if context:
-            try:
-                message = message_template.format(**context)
-            except KeyError as e:
-                logger.error(f"Missing template variable: {e}")
+        try:
+            notification_config = cls.NOTIFICATION_TYPES[notification_type]
+            subject = notification_config['subject']
+            message_template = notification_config['template']
+            
+            # Fill in template with context data if provided
+            if context:
+                try:
+                    message = message_template.format(**context)
+                except KeyError as e:
+                    logger.error(f"Missing template variable: {e}")
+                    message = message_template
+            else:
                 message = message_template
-        else:
-            message = message_template
-        
-        # Log the notification
-        logger.info(f"""
+            
+            # Log the notification
+            logger.info(f"""
 {'='*60}
 NOTIFICATION SENT
 {'='*60}
@@ -67,40 +68,58 @@ Subject: {subject}
 Message: {message}
 Type: {notification_type}
 {'='*60}
-        """)
-        
-        # In production, this would send actual email/SMS/push notification
-        # For now, we just log it
-        
-        return True
+            """)
+            
+            # In production, this would send actual email/SMS/push notification
+            # For now, we just log it
+            
+            return True
+        except AttributeError as e:
+            logger.error(f"Error accessing user attributes: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Error sending notification: {e}", exc_info=True)
+            return False
     
     @classmethod
     def send_registration_confirmation(cls, user):
         """Send registration confirmation notification."""
-        return cls.send_notification(user, 'REGISTRATION_CONFIRMATION')
+        try:
+            return cls.send_notification(user, 'REGISTRATION_CONFIRMATION')
+        except Exception as e:
+            logger.error(f"Error sending registration confirmation: {e}")
+            return False
     
     @classmethod
     def send_booking_confirmation(cls, user, doctor_name: str, date: str, time: str):
         """Send booking confirmation to patient."""
-        return cls.send_notification(
-            user,
-            'BOOKING_CONFIRMATION',
-            context={
-                'doctor_name': doctor_name,
-                'date': date,
-                'time': time
-            }
-        )
+        try:
+            return cls.send_notification(
+                user,
+                'BOOKING_CONFIRMATION',
+                context={
+                    'doctor_name': doctor_name,
+                    'date': date,
+                    'time': time
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error sending booking confirmation: {e}")
+            return False
     
     @classmethod
     def send_new_appointment_notification(cls, user, patient_name: str, date: str, time: str):
         """Send new appointment notification to doctor."""
-        return cls.send_notification(
-            user,
-            'NEW_APPOINTMENT',
-            context={
-                'patient_name': patient_name,
-                'date': date,
-                'time': time
-            }
-        )
+        try:
+            return cls.send_notification(
+                user,
+                'NEW_APPOINTMENT',
+                context={
+                    'patient_name': patient_name,
+                    'date': date,
+                    'time': time
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error sending new appointment notification: {e}")
+            return False

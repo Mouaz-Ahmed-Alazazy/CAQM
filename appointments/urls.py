@@ -4,7 +4,10 @@ from .views import (
     GetAvailableSlotsView,
     MyAppointmentsView,
     DoctorDashboardView,
-    DeleteAvailabilityView
+    DeleteAvailabilityView,
+    ModifyAppointmentView,
+    CancelAppointmentView,
+    SubmitPatientFormView
 )
 
 app_name = 'appointments'
@@ -17,4 +20,8 @@ urlpatterns = [
     path('doctor/availability/delete/<int:availability_id>/', 
          DeleteAvailabilityView.as_view(), 
          name='delete_availability'),
+    # New features
+    path('modify/<int:pk>/', ModifyAppointmentView.as_view(), name='modify_appointment'),
+    path('cancel/<int:pk>/', CancelAppointmentView.as_view(), name='cancel_appointment'),
+    path('patient-form/submit/', SubmitPatientFormView.as_view(), name='submit_patient_form'),
 ]

@@ -2,8 +2,11 @@ from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
-from .models import Appointment, DoctorAvailability
-from accounts.models import Doctor
+from .models import Appointment, DoctorAvailability, PatientForm
+from accounts.models import Doctor, Patient
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AppointmentService:
@@ -33,6 +36,10 @@ class AppointmentService:
             
             return doctor.get_available_slots_for_date(date)
         except Doctor.DoesNotExist:
+            logger.warning(f"Doctor with id {doctor_id} not found")
+            return []
+        except Exception as e:
+            logger.error(f"Error getting available slots for doctor {doctor_id}: {e}")
             return []
     
     @staticmethod
@@ -85,8 +92,10 @@ class AppointmentService:
             return True, appointment
             
         except ValidationError as e:
+            logger.warning(f"Validation error booking appointment: {e}")
             return False, str(e)
         except Exception as e:
+            logger.error(f"Unexpected error booking appointment: {e}", exc_info=True)
             return False, f'Booking failed: {str(e)}'
     
     @staticmethod
@@ -111,9 +120,175 @@ class AppointmentService:
             appointment.save()
             return True, 'Appointment cancelled successfully'
         except Appointment.DoesNotExist:
+            logger.warning(f"Appointment {appointment_id} not found for cancellation")
             return False, 'Appointment not found or cannot be cancelled'
         except Exception as e:
+            logger.error(f"Error cancelling appointment {appointment_id}: {e}")
             return False, str(e)
+    
+    @staticmethod
+    @transaction.atomic
+    def modify_appointment(appointment_id, patient, new_date=None, new_time=None, notes=None):
+        """
+        Modify an existing appointment.
+        
+        Args:
+            appointment_id: ID of the appointment
+            patient: Patient object (to verify ownership)
+            new_date: New appointment date (optional)
+            new_time: New start time (optional)
+            notes: Updated notes (optional)
+            
+        Returns:
+            Tuple (success: bool, appointment_or_error: Appointment/str)
+        """
+        try:
+            appointment = Appointment.objects.get(
+                id=appointment_id,
+                patient=patient,
+                status='SCHEDULED'
+            )
+            
+            # Update fields if provided
+            if new_date:
+                appointment.appointment_date = new_date
+            if new_time:
+                appointment.start_time = new_time
+                # Recalculate end time
+                day_of_week = appointment.appointment_date.strftime('%A').upper()
+                availability = DoctorAvailability.objects.filter(
+                    doctor=appointment.doctor,
+                    day_of_week=day_of_week,
+                    is_active=True
+                ).first()
+                
+                if availability:
+                    start_datetime = datetime.combine(appointment.appointment_date, new_time)
+                    end_datetime = start_datetime + timedelta(minutes=availability.slot_duration)
+                    appointment.end_time = end_datetime.time()
+            
+            if notes is not None:
+                appointment.notes = notes
+            
+            # Save will trigger validation
+            appointment.save()
+            logger.info(f"Appointment {appointment_id} modified successfully")
+            return True, appointment
+            
+        except Appointment.DoesNotExist:
+            logger.warning(f"Appointment {appointment_id} not found for modification")
+            return False, 'Appointment not found or cannot be modified'
+        except ValidationError as e:
+            logger.warning(f"Validation error modifying appointment: {e}")
+            return False, str(e)
+        except Exception as e:
+            logger.error(f"Error modifying appointment {appointment_id}: {e}", exc_info=True)
+            return False, f'Modification failed: {str(e)}'
+    
+    @staticmethod
+    def get_appointments_by_doctor(doctor, status=None, start_date=None, end_date=None):
+        """
+        Get appointments for a doctor with optional filtering.
+        
+        Args:
+            doctor: Doctor object
+            status: Filter by status (optional)
+            start_date: Filter from this date (optional)
+            end_date: Filter to this date (optional)
+            
+        Returns:
+            QuerySet of Appointment objects
+        """
+        try:
+            queryset = Appointment.objects.filter(doctor=doctor)
+            
+            if status:
+                queryset = queryset.filter(status=status)
+            if start_date:
+                queryset = queryset.filter(appointment_date__gte=start_date)
+            if end_date:
+                queryset = queryset.filter(appointment_date__lte=end_date)
+            
+            return queryset.order_by('appointment_date', 'start_time')
+        except Exception as e:
+            logger.error(f"Error getting appointments for doctor {doctor.pk}: {e}")
+            return Appointment.objects.none()
+    
+    @staticmethod
+    def get_patient_appointments(patient, status=None):
+        """
+        Get appointments for a patient.
+        
+        Args:
+            patient: Patient object
+            status: Filter by status (optional)
+            
+        Returns:
+            QuerySet of Appointment objects
+        """
+        try:
+            queryset = Appointment.objects.filter(patient=patient)
+            
+            if status:
+                queryset = queryset.filter(status=status)
+            
+            return queryset.order_by('-appointment_date', '-start_time')
+        except Exception as e:
+            logger.error(f"Error getting appointments for patient {patient.pk}: {e}")
+            return Appointment.objects.none()
+
+
+class PatientFormService:
+    """
+    Service layer for patient medical form management.
+    """
+    
+    @staticmethod
+    @transaction.atomic
+    def submit_form(patient, chief_complaint, medical_history='', current_medications='', allergies=''):
+        """
+        Submit a patient medical form.
+        
+        Args:
+            patient: Patient object
+            chief_complaint: Main reason for visit
+            medical_history: Past medical conditions
+            current_medications: Current medications
+            allergies: Known allergies
+            
+        Returns:
+            Tuple (success: bool, form_or_error: PatientForm/str)
+        """
+        try:
+            form = PatientForm.objects.create(
+                patient=patient,
+                chief_complaint=chief_complaint,
+                medical_history=medical_history,
+                current_medications=current_medications,
+                allergies=allergies
+            )
+            logger.info(f"Patient form {form.pk} submitted by patient {patient.pk}")
+            return True, form
+        except Exception as e:
+            logger.error(f"Error submitting patient form: {e}", exc_info=True)
+            return False, f'Failed to submit form: {str(e)}'
+    
+    @staticmethod
+    def get_patient_forms(patient):
+        """
+        Get all forms submitted by a patient.
+        
+        Args:
+            patient: Patient object
+            
+        Returns:
+            QuerySet of PatientForm objects
+        """
+        try:
+            return PatientForm.objects.filter(patient=patient).order_by('-submitted_at')
+        except Exception as e:
+            logger.error(f"Error getting forms for patient {patient.pk}: {e}")
+            return PatientForm.objects.none()
 
 
 class ScheduleService:
@@ -160,6 +335,7 @@ class ScheduleService:
             return True, f'Successfully created {len(created_slots)} availability slot(s)'
             
         except Exception as e:
+            logger.error(f"Error updating schedule for doctor {doctor.pk}: {e}", exc_info=True)
             return False, f'Failed to update schedule: {str(e)}'
     
     @staticmethod
@@ -173,4 +349,8 @@ class ScheduleService:
         Returns:
             QuerySet of DoctorAvailability objects
         """
-        return DoctorAvailability.objects.filter(doctor=doctor).order_by('day_of_week')
+        try:
+            return DoctorAvailability.objects.filter(doctor=doctor).order_by('day_of_week')
+        except Exception as e:
+            logger.error(f"Error getting schedule for doctor {doctor.pk}: {e}")
+            return DoctorAvailability.objects.none()

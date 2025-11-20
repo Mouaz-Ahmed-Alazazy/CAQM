@@ -329,3 +329,145 @@ class DeleteAvailabilityView(LoginRequiredMixin, DoctorRequiredMixin, View):
         availability.delete()
         messages.success(request, 'Availability deleted successfully')
         return redirect('appointments:doctor_dashboard')
+
+
+class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
+    """
+    Modify existing appointment.
+    Follows sequence diagram: modify_appointment -> validate -> update -> send_notifications
+    """
+    template_name = 'appointments/modify_appointment.html'
+    
+    def get(self, request, pk):
+        try:
+            appointment = get_object_or_404(
+                Appointment,
+                pk=pk,
+                patient=request.user.patient_profile,
+                status='SCHEDULED'
+            )
+            return self.render_form(request, appointment)
+        except Exception as e:
+            messages.error(request, f'Error loading appointment: {str(e)}')
+            return redirect('appointments:my_appointments')
+    
+    def post(self, request, pk):
+        try:
+            appointment = get_object_or_404(
+                Appointment,
+                pk=pk,
+                patient=request.user.patient_profile,
+                status='SCHEDULED'
+            )
+            
+            new_date_str = request.POST.get('appointment_date')
+            new_time_str = request.POST.get('start_time')
+            notes = request.POST.get('notes', '')
+            
+            new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date() if new_date_str else None
+            new_time = datetime.strptime(new_time_str, '%H:%M').time() if new_time_str else None
+            
+            success, result = AppointmentService.modify_appointment(
+                pk,
+                request.user.patient_profile,
+                new_date=new_date,
+                new_time=new_time,
+                notes=notes
+            )
+            
+            if success:
+                # Send notifications
+                NotificationService.send_booking_confirmation(
+                    request.user,
+                    result.doctor.user.get_full_name(),
+                    result.appointment_date.strftime('%Y-%m-%d'),
+                    result.start_time.strftime('%H:%M')
+                )
+                messages.success(request, 'Appointment modified successfully')
+                return redirect('appointments:my_appointments')
+            else:
+                messages.error(request, result)
+                return self.render_form(request, appointment)
+                
+        except Exception as e:
+            messages.error(request, f'Error modifying appointment: {str(e)}')
+            return redirect('appointments:my_appointments')
+    
+    def render_form(self, request, appointment):
+        from django.shortcuts import render
+        context = {
+            'appointment': appointment,
+            'doctor': appointment.doctor,
+        }
+        return render(request, self.template_name, context)
+
+
+class CancelAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
+    """
+    Cancel existing appointment.
+    Follows sequence diagram: cancel_appointment -> update_status -> send_notifications
+    """
+    
+    def post(self, request, pk):
+        try:
+            success, message = AppointmentService.cancel_appointment(
+                pk,
+                request.user.patient_profile
+            )
+            
+            if success:
+                messages.success(request, message)
+            else:
+                messages.error(request, message)
+                
+        except Exception as e:
+            messages.error(request, f'Error cancelling appointment: {str(e)}')
+        
+        return redirect('appointments:my_appointments')
+
+
+class SubmitPatientFormView(LoginRequiredMixin, PatientRequiredMixin, View):
+    """
+    Submit medical history form.
+    Follows sequence diagram: submit_form -> validate -> save -> confirmation
+    """
+    template_name = 'appointments/submit_patient_form.html'
+    
+    def get(self, request):
+        from django.shortcuts import render
+        return render(request, self.template_name)
+    
+    def post(self, request):
+        from .services import PatientFormService
+        
+        try:
+            chief_complaint = request.POST.get('chief_complaint', '')
+            medical_history = request.POST.get('medical_history', '')
+            current_medications = request.POST.get('current_medications', '')
+            allergies = request.POST.get('allergies', '')
+            
+            if not chief_complaint:
+                messages.error(request, 'Chief complaint is required')
+                from django.shortcuts import render
+                return render(request, self.template_name)
+            
+            success, result = PatientFormService.submit_form(
+                request.user.patient_profile,
+                chief_complaint,
+                medical_history,
+                current_medications,
+                allergies
+            )
+            
+            if success:
+                messages.success(request, 'Medical form submitted successfully')
+                return redirect('appointments:my_appointments')
+            else:
+                messages.error(request, result)
+                from django.shortcuts import render
+                return render(request, self.template_name)
+                
+        except Exception as e:
+            messages.error(request, f'Error submitting form: {str(e)}')
+            from django.shortcuts import render
+            return render(request, self.template_name)
