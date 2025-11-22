@@ -40,9 +40,7 @@ class DoctorRequiredMixin(UserPassesTestMixin):
 
 class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
     """
-    Book new appointment - matches sequence diagram:
-    GET /appointments/book/ -> get_all_doctors -> render_form
-    POST -> book_appointment -> send_notifications -> redirect
+    Book new appointment.
     """
     model = Appointment
     template_name = 'appointments/book_appointment.html'
@@ -50,7 +48,7 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
     fields = ['doctor', 'appointment_date', 'start_time', 'notes']
     
     def get_form(self, form_class=None):
-        """Customize the form inline - no separate forms.py needed"""
+        """Customize the form inline"""
         form = super().get_form(form_class)
         
         # Customize doctor field
@@ -84,7 +82,7 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
         return form
     
     def form_valid(self, form):
-        """Handle successful booking - follows sequence diagram with AppointmentService"""
+        """Handle successful booking"""
         patient = self.request.user.patient_profile
         doctor = form.cleaned_data['doctor']
         appointment_date = form.cleaned_data['appointment_date']
@@ -102,7 +100,7 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
         
         if success:
             appointment = result
-            # Send notifications to both patient and doctor (as per sequence diagram)
+            # Send notifications to both patient and doctor.
             try:
                 NotificationService.send_booking_confirmation(
                     self.request.user,
@@ -137,7 +135,6 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
 class GetAvailableSlotsView(LoginRequiredMixin, View):
     """
     AJAX view to get available slots - returns JSON
-    Matches sequence diagram: AJAX GET /api/available_slots/ -> get_available_slots -> return JSON
     """
     
     def get(self, request, *args, **kwargs):
@@ -230,7 +227,6 @@ class MyAppointmentsView(LoginRequiredMixin, PatientRequiredMixin, ListView):
 class DoctorDashboardView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView):
     """
     Doctor dashboard - view appointments and manage availability
-    Supports schedule update matching sequence diagram
     """
     template_name = 'appointments/doctor_dashboard.html'
     
@@ -283,7 +279,6 @@ class DoctorDashboardView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView)
     def post(self, request, *args, **kwargs):
         """
         Handle availability form submission
-        Matches sequence diagram: POST /doctor/schedule/update/ -> update_schedule
         """
         if 'availability_form' in request.POST:
             AvailabilityForm = modelform_factory(
@@ -334,7 +329,6 @@ class DeleteAvailabilityView(LoginRequiredMixin, DoctorRequiredMixin, View):
 class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
     """
     Modify existing appointment.
-    Follows sequence diagram: modify_appointment -> validate -> update -> send_notifications
     """
     template_name = 'appointments/modify_appointment.html'
     
@@ -405,7 +399,6 @@ class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
 class CancelAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
     """
     Cancel existing appointment.
-    Follows sequence diagram: cancel_appointment -> update_status -> send_notifications
     """
     
     def post(self, request, pk):
@@ -429,7 +422,6 @@ class CancelAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
 class SubmitPatientFormView(LoginRequiredMixin, PatientRequiredMixin, View):
     """
     Submit medical history form.
-    Follows sequence diagram: submit_form -> validate -> save -> confirmation
     """
     template_name = 'appointments/submit_patient_form.html'
     

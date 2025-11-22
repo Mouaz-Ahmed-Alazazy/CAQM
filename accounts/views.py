@@ -85,8 +85,6 @@ class PatientRegistrationForm(forms.ModelForm):
 class PatientRegistrationView(CreateView):
     """
     Patient registration view - only patients can self-register.
-    Matches sequence diagram: GET/POST /register/ -> render_form -> is_valid 
-    -> create_user -> create_session -> send_notification -> redirect
     """
     model = User
     form_class = PatientRegistrationForm
@@ -103,14 +101,14 @@ class PatientRegistrationView(CreateView):
         return super().dispatch(request, *args, **kwargs)
     
     def form_valid(self, form):
-        """Handle successful form submission - follows sequence diagram flow"""
+        """Handle successful form submission."""
         response = super().form_valid(form)
         
-        # Auto login after registration (create_session in sequence diagram)
+        # Auto login after registration.
         from django.contrib.auth import login
         login(self.request, self.object, backend='django.contrib.auth.backends.ModelBackend')
         
-        # Send registration confirmation notification (as per sequence diagram)
+        # Send registration confirmation notification
         try:
             NotificationService.send_registration_confirmation(self.object)
         except Exception as e:
@@ -130,8 +128,6 @@ class PatientRegistrationView(CreateView):
 class CustomLoginView(LoginView):
     """
     Custom login view with role-based redirects.
-    Matches sequence diagram: GET/POST /login/ -> is_valid -> authenticate 
-    -> validate_password -> validate_session -> set_session_cookie -> redirect
     """
     template_name = 'accounts/login.html'
     redirect_authenticated_user = True
