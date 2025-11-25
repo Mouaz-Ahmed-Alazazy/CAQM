@@ -7,8 +7,6 @@ logger = logging.getLogger(__name__)
 class NotificationService:
     """
     Notification service for sending notifications to users.
-    Currently implements logging-based notifications.
-    Can be extended to support email, SMS, or push notifications.
     """
     
     NOTIFICATION_TYPES = {

@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 class AppointmentService:
     """
     Service layer for appointment management.
-    Encapsulates business logic as per the sequence diagram.
     """
     
     @staticmethod
@@ -47,17 +46,7 @@ class AppointmentService:
     def book_appointment(patient, doctor, appointment_date, start_time, notes=''):
         """
         Book an appointment (with atomic transaction).
-        Matches sequence diagram: book_appointment -> create_appointment
-        
-        Args:
-            patient: Patient object
-            doctor: Doctor object
-            appointment_date: Date object
-            start_time: Time object
-            notes: Optional notes
-            
-        Returns:
-            Tuple (success: bool, appointment_or_error: Appointment/str)
+        Returns: Tuple (success: bool, appointment_or_error: Appointment/str)
         """
         try:
             # Calculate end time based on slot duration
@@ -86,7 +75,6 @@ class AppointmentService:
                 status='SCHEDULED'
             )
             
-            # Save will trigger full_clean() which validates business rules
             appointment.save()
             
             return True, appointment
@@ -102,11 +90,6 @@ class AppointmentService:
     def cancel_appointment(appointment_id, patient):
         """
         Cancel an appointment.
-        
-        Args:
-            appointment_id: ID of the appointment
-            patient: Patient object (to verify ownership)
-            
         Returns:
             Tuple (success: bool, message: str)
         """
@@ -131,14 +114,6 @@ class AppointmentService:
     def modify_appointment(appointment_id, patient, new_date=None, new_time=None, notes=None):
         """
         Modify an existing appointment.
-        
-        Args:
-            appointment_id: ID of the appointment
-            patient: Patient object (to verify ownership)
-            new_date: New appointment date (optional)
-            new_time: New start time (optional)
-            notes: Updated notes (optional)
-            
         Returns:
             Tuple (success: bool, appointment_or_error: Appointment/str)
         """
@@ -169,8 +144,7 @@ class AppointmentService:
             
             if notes is not None:
                 appointment.notes = notes
-            
-            # Save will trigger validation
+    
             appointment.save()
             logger.info(f"Appointment {appointment_id} modified successfully")
             return True, appointment
@@ -189,13 +163,6 @@ class AppointmentService:
     def get_appointments_by_doctor(doctor, status=None, start_date=None, end_date=None):
         """
         Get appointments for a doctor with optional filtering.
-        
-        Args:
-            doctor: Doctor object
-            status: Filter by status (optional)
-            start_date: Filter from this date (optional)
-            end_date: Filter to this date (optional)
-            
         Returns:
             QuerySet of Appointment objects
         """
@@ -218,11 +185,6 @@ class AppointmentService:
     def get_patient_appointments(patient, status=None):
         """
         Get appointments for a patient.
-        
-        Args:
-            patient: Patient object
-            status: Filter by status (optional)
-            
         Returns:
             QuerySet of Appointment objects
         """
@@ -248,14 +210,6 @@ class PatientFormService:
     def submit_form(patient, chief_complaint, medical_history='', current_medications='', allergies=''):
         """
         Submit a patient medical form.
-        
-        Args:
-            patient: Patient object
-            chief_complaint: Main reason for visit
-            medical_history: Past medical conditions
-            current_medications: Current medications
-            allergies: Known allergies
-            
         Returns:
             Tuple (success: bool, form_or_error: PatientForm/str)
         """
@@ -277,10 +231,6 @@ class PatientFormService:
     def get_patient_forms(patient):
         """
         Get all forms submitted by a patient.
-        
-        Args:
-            patient: Patient object
-            
         Returns:
             QuerySet of PatientForm objects
         """
@@ -294,7 +244,6 @@ class PatientFormService:
 class ScheduleService:
     """
     Service layer for doctor schedule management.
-    Matches sequence diagram for schedule updates.
     """
     
     @staticmethod
@@ -302,12 +251,6 @@ class ScheduleService:
     def update_schedule(doctor, schedule_data):
         """
         Update doctor's schedule (clear old slots and create new ones).
-        Matches sequence diagram: update_schedule -> clear_old_slots -> create_time_slots
-        
-        Args:
-            doctor: Doctor object
-            schedule_data: List of dicts with keys: day_of_week, start_time, end_time, slot_duration
-            
         Returns:
             Tuple (success: bool, message: str)
         """
@@ -342,10 +285,6 @@ class ScheduleService:
     def get_doctor_schedule(doctor):
         """
         Get doctor's current schedule.
-        
-        Args:
-            doctor: Doctor object
-            
         Returns:
             QuerySet of DoctorAvailability objects
         """

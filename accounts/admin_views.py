@@ -22,7 +22,6 @@ class AdminRequiredMixin(UserPassesTestMixin):
 class AdminUserRegistrationView(LoginRequiredMixin, AdminRequiredMixin, View):
     """
     Admin can register new users (Patient, Doctor, Admin).
-    Follows sequence diagram: register_user -> create_user -> create_profile -> notify
     """
     template_name = 'accounts/admin_register_user.html'
     
