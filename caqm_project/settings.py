@@ -81,9 +81,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'caqm_db',
         'USER': 'root',
-        'PASSWORD': 'Mouaz2003',
+        'PASSWORD': '0000',
         'HOST': 'localhost',
-        'PORT': '3306',
+        'PORT': '5000',
     }
 }
 
