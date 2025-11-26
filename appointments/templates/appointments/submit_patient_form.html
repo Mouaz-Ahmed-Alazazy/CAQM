@@ -20,14 +20,14 @@
                         <label for="chief_complaint" class="form-label">Chief Complaint <span
                                 class="text-danger">*</span></label>
                         <textarea class="form-control" id="chief_complaint" name="chief_complaint" rows="3"
-                            placeholder="Main reason for your visit..." required></textarea>
+                            placeholder="Main reason for your visit..." required>{{ patient_form.chief_complaint }}</textarea>
                         <small class="text-muted">Describe your main health concern</small>
                     </div>
 
                     <div class="mb-3">
                         <label for="medical_history" class="form-label">Medical History</label>
                         <textarea class="form-control" id="medical_history" name="medical_history" rows="4"
-                            placeholder="Past medical conditions, surgeries, etc..."></textarea>
+                            placeholder="Past medical conditions, surgeries, etc...">{{ patient_form.medical_history }}</textarea>
                         <small class="text-muted">Include any chronic conditions, past surgeries, or significant
                             medical events</small>
                     </div>
@@ -35,14 +35,14 @@
                     <div class="mb-3">
                         <label for="current_medications" class="form-label">Current Medications</label>
                         <textarea class="form-control" id="current_medications" name="current_medications" rows="3"
-                            placeholder="List all medications you are currently taking..."></textarea>
+                            placeholder="List all medications you are currently taking...">{{ patient_form.current_medications }}</textarea>
                         <small class="text-muted">Include dosages if known</small>
                     </div>
 
                     <div class="mb-3">
                         <label for="allergies" class="form-label">Allergies</label>
                         <textarea class="form-control" id="allergies" name="allergies" rows="3"
-                            placeholder="Any known allergies (medications, food, environmental)..."></textarea>
+                            placeholder="Any known allergies (medications, food, environmental)...">{{ patient_form.allergies }}</textarea>
                         <small class="text-muted">Include all known allergies and reactions</small>
                     </div>
 

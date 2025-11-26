@@ -10,7 +10,7 @@ from django.forms import modelform_factory
 from django import forms
 from datetime import datetime, timedelta
 
-from .models import Appointment, DoctorAvailability
+from .models import Appointment, DoctorAvailability, PatientForm
 from accounts.models import Doctor, Patient
 from .services import AppointmentService, ScheduleService
 from accounts.notifications import NotificationService
@@ -427,7 +427,9 @@ class SubmitPatientFormView(LoginRequiredMixin, PatientRequiredMixin, View):
     
     def get(self, request):
         from django.shortcuts import render
-        return render(request, self.template_name)
+        from .models import PatientForm
+        patient_form = PatientForm.objects.filter(patient=request.user.patient_profile).first()
+        return render(request, self.template_name, {'patient_form': patient_form})
     
     def post(self, request):
         from .services import PatientFormService
@@ -441,7 +443,9 @@ class SubmitPatientFormView(LoginRequiredMixin, PatientRequiredMixin, View):
             if not chief_complaint:
                 messages.error(request, 'Chief complaint is required')
                 from django.shortcuts import render
-                return render(request, self.template_name)
+                from .models import PatientForm
+                patient_form = PatientForm.objects.filter(patient=request.user.patient_profile).first()
+                return render(request, self.template_name, {'patient_form': patient_form})
             
             success, result = PatientFormService.submit_form(
                 request.user.patient_profile,
@@ -457,9 +461,13 @@ class SubmitPatientFormView(LoginRequiredMixin, PatientRequiredMixin, View):
             else:
                 messages.error(request, result)
                 from django.shortcuts import render
-                return render(request, self.template_name)
+                from .models import PatientForm
+                patient_form = PatientForm.objects.filter(patient=request.user.patient_profile).first()
+                return render(request, self.template_name, {'patient_form': patient_form})
                 
         except Exception as e:
             messages.error(request, f'Error submitting form: {str(e)}')
             from django.shortcuts import render
-            return render(request, self.template_name)
+            from .models import PatientForm
+            patient_form = PatientForm.objects.filter(patient=request.user.patient_profile).first()
+            return render(request, self.template_name, {'patient_form': patient_form})

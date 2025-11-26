@@ -154,7 +154,7 @@ class CustomLoginView(LoginView):
         if user.is_doctor():
             return reverse_lazy('appointments:doctor_dashboard')
         elif user.is_patient():
-            return reverse_lazy('appointments:book_appointment')
+            return reverse_lazy('appointments:my_appointments')
         else:
             return reverse_lazy('admin:index')
     

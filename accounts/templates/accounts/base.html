@@ -45,6 +45,11 @@
                             <i class="fas fa-calendar-check"></i> My Appointments
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'appointments:submit_patient_form' %}">
+                            <i class="fas fa-file-medical"></i> Submit Medical Form
+                        </a>
+                    </li>
                     {% elif user.is_doctor %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'appointments:doctor_dashboard' %}">
