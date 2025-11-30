@@ -323,7 +323,7 @@ class DeleteAvailabilityView(LoginRequiredMixin, DoctorRequiredMixin, View):
         )
         availability.delete()
         messages.success(request, 'Availability deleted successfully')
-        return redirect('appointments:doctor_dashboard')
+        return redirect('appointments:availability_management')
 
 
 class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
