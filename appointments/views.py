@@ -14,6 +14,7 @@ from .models import Appointment, DoctorAvailability, PatientForm
 from accounts.models import Doctor, Patient
 from .services import AppointmentService, ScheduleService
 from accounts.notifications import NotificationService
+from queues.models import Queue
 
 
 class PatientRequiredMixin(UserPassesTestMixin):

@@ -11,6 +11,7 @@ from django import forms
 
 from .models import Appointment, DoctorAvailability
 from .services import ScheduleService
+from queues.models import Queue
 
 
 class DoctorRequiredMixin:
@@ -29,16 +30,24 @@ class TodayAppointmentsView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         doctor = self.request.user.doctor_profile
+        today = timezone.now().date()
+        
+        # Get or create Queue for today (this automatically generates QR code)
+        queue, created = Queue.objects.get_or_create(
+            doctor=doctor,
+            date=today
+        )
         
         # Get today's appointments
         context['today_appointments'] = Appointment.objects.filter(
             doctor=doctor,
             status__in=['SCHEDULED', 'CHECKED_IN'],
-            appointment_date=timezone.now().date()
+            appointment_date=today
         ).order_by('start_time')
         
         context['doctor'] = doctor
-        context['today_date'] = timezone.now().date()
+        context['today_date'] = today
+        context['queue'] = queue
         
         return context
 

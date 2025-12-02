@@ -10,6 +10,35 @@
     </div>
 </div>
 
+<!-- Queue Statistics -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h3 class="text-primary mb-0">{{ today_appointments|length }}</h3>
+                <p class="text-muted mb-0">Scheduled Appointments</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h3 class="text-success mb-0">{{ queue.patient_queues.count }}</h3>
+                <p class="text-muted mb-0">Patients in Queue</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <h3 class="text-info mb-0">{{ today_date|date:"l" }}</h3>
+                <p class="text-muted mb-0">Day of Week</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Appointments Table -->
 <div class="row">
     <div class="col-12">
         <div class="card">
