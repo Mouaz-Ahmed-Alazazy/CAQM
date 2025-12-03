@@ -71,6 +71,71 @@ class Queue(models.Model):
         # Simple estimation: position * average_consultation_time (e.g., 15 mins)
         # This can be refined based on actual data
         return position * 15
+    
+    def enqueue(self, patient_id):
+        """
+        Add a patient to the queue.
+        
+        Args:
+            patient_id: Patient instance or patient primary key
+        
+        Returns:
+            PatientQueue: The created queue entry
+        """
+        from accounts.models import Patient
+        
+        if isinstance(patient_id, Patient):
+            patient = patient_id
+        else:
+            patient = Patient.objects.get(pk=patient_id)
+        
+        patient_queue = PatientQueue.objects.create(
+            queue=self,
+            patient=patient,
+            status='WAITING'
+        )
+        
+        return patient_queue
+    
+    def dequeue(self):
+        """
+        Remove and return the next patient from the queue (FIFO).
+        
+        Returns:
+            PatientQueue or None: The next patient queue entry
+        """
+        next_patient = self.patient_queues.filter(
+            status='WAITING'
+        ).order_by('position').first()
+        
+        if next_patient:
+            next_patient.status = 'IN_PROGRESS'
+            next_patient.save()
+        
+        return next_patient
+    
+    def validate_qrcode(self, code):
+        """
+        Validate if a QR code matches this queue.
+        
+        Args:
+            code (str): QR code string to validate
+        
+        Returns:
+            bool: True if valid, False otherwise
+        """
+        return self.qrcode == code
+    
+    def get_qrcode_image(self):
+        """
+        Get the QR code image URL.
+        
+        Returns:
+            str: URL to QR code image or empty string
+        """
+        if self.qrcode_image:
+            return self.qrcode_image.url
+        return ""
 
 
 class PatientQueue(models.Model):
@@ -113,3 +178,92 @@ class PatientQueue(models.Model):
             self.estimated_time = self.queue.get_estimated_wait_time(self.position)
             
         super().save(*args, **kwargs)
+    
+    def update_status(self, new_status=None):
+        """
+        Update the patient's queue status.
+        
+        Args:
+            new_status (str): New status value (optional, defaults to next logical status)
+        """
+        if new_status:
+            self.status = new_status
+        else:
+            # Auto-progress status
+            if self.status == 'WAITING':
+                self.status = 'IN_PROGRESS'
+            elif self.status == 'IN_PROGRESS':
+                self.status = 'TERMINATED'
+        
+        self.save()
+    
+    def get_wait_time(self):
+        """
+        Calculate current wait time based on check-in time.
+        
+        Returns:
+            int: Wait time in minutes
+        """
+        from django.utils import timezone
+        from datetime import datetime
+        
+        if not self.check_in_time:
+            return 0
+        
+        now = timezone.now()
+        check_in_datetime = datetime.combine(now.date(), self.check_in_time)
+        
+        if timezone.is_aware(now):
+            check_in_datetime = timezone.make_aware(check_in_datetime)
+        
+        delta = now - check_in_datetime
+        return int(delta.total_seconds() / 60)
+    
+    def mark_as_emergency(self):
+        """
+        Mark this patient as emergency and move to front of queue.
+        """
+        self.is_emergency = True
+        self.status = 'EMERGENCY'
+        self.save()
+        
+        # Move to front (position 1) and shift others
+        other_patients = PatientQueue.objects.filter(
+            queue=self.queue,
+            position__lt=self.position
+        ).order_by('position')
+        
+        for patient_q in other_patients:
+            patient_q.position += 1
+            patient_q.save()
+        
+        self.position = 1
+        self.save()
+    
+    def update_position(self, new_position):
+        """
+        Update patient's position in the queue.
+        
+        Args:
+            new_position (int): New position number
+        """
+        old_position = self.position
+        self.position = new_position
+        self.estimated_time = self.queue.get_estimated_wait_time(new_position)
+        self.save()
+        
+        # Adjust other patients' positions
+        if new_position < old_position:
+            # Moving up - shift others down
+            PatientQueue.objects.filter(
+                queue=self.queue,
+                position__gte=new_position,
+                position__lt=old_position
+            ).exclude(pk=self.pk).update(position=models.F('position') + 1)
+        elif new_position > old_position:
+            # Moving down - shift others up
+            PatientQueue.objects.filter(
+                queue=self.queue,
+                position__gt=old_position,
+                position__lte=new_position
+            ).exclude(pk=self.pk).update(position=models.F('position') - 1)
