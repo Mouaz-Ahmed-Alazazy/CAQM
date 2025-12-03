@@ -16,8 +16,8 @@ class QRScannerView(LoginRequiredMixin, TemplateView):
     """
     template_name = 'queues/qr_scanner.html'
     
-    def get_context_data(self, kwargs):
-        context = super().get_context_data(kwargs)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         context['user'] = self.request.user
         context['user_type'] = 'Doctor' if self.request.user.is_doctor() else 'Patient'
         return context

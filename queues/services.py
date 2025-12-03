@@ -10,7 +10,7 @@ from accounts.models import Patient, Doctor
 from .models import Queue, PatientQueue
 import logging
 
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 class CheckInService:

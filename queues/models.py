@@ -68,9 +68,9 @@ class Queue(models.Model):
         return self.patient_queues.count() == 0
     
     def get_estimated_wait_time(self, position):
-        # Simple estimation: position * average_consultation_time (e.g., 15 mins)
+        # Simple estimation: position * average_consultation_time (e.g., 30 mins)
         # This can be refined based on actual data
-        return position * 15
+        return position * 30
     
     def enqueue(self, patient_id):
         """
