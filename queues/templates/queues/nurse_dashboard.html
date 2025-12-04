@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Nurse Dashboard</h2>
+            {% if queue %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    Current Queue: {{ queue.doctor.get_full_name }} - {{ queue.date }}
+                </div>
+                <div class="card-body">
+                    {% if current_patient %}
+                    <div class="alert alert-info">
+                        <h4>Current Patient: {{ current_patient.patient.user.get_full_name }}</h4>
+                        <p>Status: {{ current_patient.get_status_display }}</p>
+                        {% if current_patient.status == 'IN_PROGRESS' %}
+                        <p>Consultation started at: {{ current_patient.consultation_start_time|time:"H:i" }}</p>
+                        <form method="post" action="{% url 'end_consultation' current_patient.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-lg">End Consultation</button>
+                        </form>
+                        <div id="timer" class="mt-2 display-4">00:00:00</div>
+                        {% else %}
+                        <form method="post" action="{% url 'start_consultation' current_patient.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success btn-lg">Start Consultation</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        No patient currently in progress or waiting at the front of the queue.
+                    </div>
+                    {% endif %}
+
+                    <hr>
+                    <h5>Waiting Patients</h5>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Position</th>
+                                <th>Patient Name</th>
+                                <th>Status</th>
+                                <th>Estimated Wait</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for patient_q in waiting_patients %}
+                            <tr>
+                                <td>{{ patient_q.position }}</td>
+                                <td>{{ patient_q.patient.user.get_full_name }}</td>
+                                <td>{{ patient_q.get_status_display }}</td>
+                                <td>{{ patient_q.estimated_time }} mins</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">No patients waiting.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                No active queue found for today.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if current_patient and current_patient.status == 'IN_PROGRESS' %}
+<script>
+    // Simple timer script
+    let startTime = new Date("{{ current_patient.consultation_start_time|date:'Y-m-d H:i:s' }}").getTime();
+
+    // If start time is invalid (e.g. timezone issues), fallback to now or handle gracefully
+    if (isNaN(startTime)) {
+        startTime = new Date().getTime();
+    }
+
+    setInterval(function () {
+        let now = new Date().getTime();
+        let distance = now - startTime;
+
+        // Time calculations for hours, minutes and seconds
+        let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        document.getElementById("timer").innerHTML =
+            (hours < 10 ? "0" + hours : hours) + ":" +
+            (minutes < 10 ? "0" + minutes : minutes) + ":" +
+            (seconds < 10 ? "0" + seconds : seconds);
+    }, 1000);
+</script>
+{% endif %}
+{% endblock %}

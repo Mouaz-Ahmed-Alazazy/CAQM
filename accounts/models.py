@@ -29,6 +29,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = [
         ('PATIENT', 'Patient'),
         ('DOCTOR', 'Doctor'),
+        ('NURSE', 'Nurse'),
         ('ADMIN', 'Admin'),
     ]
     
@@ -176,3 +177,16 @@ class Doctor(models.Model):
             return []
         
         return available_slots[:15 - appointments_count]
+
+
+class Nurse(models.Model):
+    """Nurse profile extending User"""
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True, related_name='nurse_profile')
+    assigned_doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True, related_name='nurses')
+    
+    class Meta:
+        db_table = 'nurses'
+    
+    def __str__(self):
+        return f"Nurse {self.user.get_full_name()}"

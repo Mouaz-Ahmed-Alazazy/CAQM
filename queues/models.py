@@ -158,6 +158,11 @@ class PatientQueue(models.Model):
     is_emergency = models.BooleanField(default=False)
     checkedin_via_qrcode = models.BooleanField(default=False)
     
+    checkedin_via_qrcode = models.BooleanField(default=False)
+    
+    consultation_start_time = models.DateTimeField(null=True, blank=True)
+    consultation_end_time = models.DateTimeField(null=True, blank=True)
+    
     estimated_time = models.IntegerField(help_text="Estimated wait time in minutes", default=0)
 
     class Meta:
@@ -218,6 +223,15 @@ class PatientQueue(models.Model):
         
         delta = now - check_in_datetime
         return int(delta.total_seconds() / 60)
+
+    def get_consultation_duration(self):
+        """
+        Calculate consultation duration in minutes.
+        """
+        if self.consultation_start_time and self.consultation_end_time:
+            delta = self.consultation_end_time - self.consultation_start_time
+            return int(delta.total_seconds() / 60)
+        return 0
     
     def mark_as_emergency(self):
         """
