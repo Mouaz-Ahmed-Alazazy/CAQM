@@ -26,6 +26,7 @@
                                         <th>Date</th>
                                         <th>Time</th>
                                         <th>Status</th>
+                                        <th>Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -46,16 +47,10 @@
                                         <td>
                                             <span class="badge bg-success">{{ appointment.get_status_display }}</span>
                                         </td>
-                                    </tr>
-                                    {% if appointment.notes %}
-                                    <tr>
-                                        <td></td>
-                                        <td colspan="5">
-                                            <small class="text-muted"><strong>Notes:</strong> {{ appointment.notes
-                                                }}</small>
+                                        <td>
+                                            <span>{{ appointment.notes|default:"-" }}</span>
                                         </td>
                                     </tr>
-                                    {% endif %}
                                     {% endfor %}
                                 </tbody>
                             </table>
