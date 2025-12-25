@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Register New User{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4><i class="bi bi-person-plus"></i> Register New User (Admin)</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="registerForm">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Password <span
+                                        class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">First Name <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Last Name <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="phone" name="phone" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
+                                <select class="form-select" id="role" name="role" required>
+                                    <option value="">Select Role...</option>
+                                    <option value="PATIENT">Patient</option>
+                                    <option value="DOCTOR">Doctor</option>
+                                    <option value="ADMIN">Admin</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Patient-specific fields -->
+                        <div id="patient-fields" style="display: none;">
+                            <h5 class="mt-3">Patient Information</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="date_of_birth" class="form-label">Date of Birth</label>
+                                    <input type="date" class="form-control" id="date_of_birth" name="date_of_birth">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="emergency_contact" class="form-label">Emergency Contact</label>
+                                    <input type="tel" class="form-control" id="emergency_contact"
+                                        name="emergency_contact">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Address</label>
+                                <textarea class="form-control" id="address" name="address" rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Doctor-specific fields -->
+                        <div id="doctor-fields" style="display: none;">
+                            <h5 class="mt-3">Doctor Information</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="specialization" class="form-label">Specialization <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" id="specialization" name="specialization">
+                                        <option value="">Select Specialization...</option>
+                                        <option value="CARDIO">Cardiology</option>
+                                        <option value="DERMA">Dermatology</option>
+                                        <option value="GP">General Practice</option>
+                                        <option value="NEURO">Neurology</option>
+                                        <option value="ORTHO">Orthopedics</option>
+                                        <option value="PEDIA">Pediatrics</option>
+                                        <option value="PSYCH">Psychiatry</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="license_number" class="form-label">License Number</label>
+                                    <input type="text" class="form-control" id="license_number" name="license_number">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="years_of_experience" class="form-label">Years of Experience</label>
+                                <input type="number" class="form-control" id="years_of_experience"
+                                    name="years_of_experience" min="0" value="0">
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'admins:admin_user_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-check-circle"></i> Register User
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Show/hide role-specific fields
+    document.getElementById('role').addEventListener('change', function () {
+        const patientFields = document.getElementById('patient-fields');
+        const doctorFields = document.getElementById('doctor-fields');
+
+        patientFields.style.display = 'none';
+        doctorFields.style.display = 'none';
+
+        if (this.value === 'PATIENT') {
+            patientFields.style.display = 'block';
+        } else if (this.value === 'DOCTOR') {
+            doctorFields.style.display = 'block';
+            document.getElementById('specialization').required = true;
+        }
+    });
+</script>
+{% endblock %}

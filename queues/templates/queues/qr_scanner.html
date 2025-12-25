@@ -1,0 +1,335 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}QR Check-in - CAQM{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Mobile-optimized styles */
+    #qr-reader {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        border: 2px solid #007bff;
+        border-radius: 8px;
+        /* Ensure visible height before camera loads */
+        min-height: 300px;
+        background-color: #f8f9fa;
+        position: relative;
+    }
+
+    /* Center the permission button/message inside the reader box */
+    #qr-reader__dashboard_section_csr span {
+        display: none !important;
+    }
+
+    .scanner-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .result-container {
+        margin-top: 20px;
+        width: 100%;
+        max-width: 600px;
+    }
+
+    .alert-custom {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        margin: 20px 0;
+    }
+
+    .loading-spinner.active {
+        display: block;
+    }
+
+    /* Start Button Styling */
+    #start-scanner-btn {
+        margin: 20px 0;
+        padding: 12px 24px;
+        font-size: 1.1rem;
+        display: none;
+        /* Hidden by default, shown via JS if needed */
+    }
+
+    #permission-help {
+        max-width: 600px;
+        margin: 10px auto;
+        text-align: center;
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .scanner-container {
+            padding: 10px;
+        }
+
+        #qr-reader {
+            min-height: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container scanner-container">
+    <div class="row w-100 justify-content-center">
+        <div class="col-12 text-center mb-4">
+            <h2><i class="fas fa-qrcode"></i> QR Code Check-in</h2>
+            <p class="text-muted">Welcome, {{ user.get_full_name }} ({{ user_type }})</p>
+            <p class="text-info">
+                <i class="fas fa-info-circle"></i>
+                Please scan the QR code displayed at reception to check in
+            </p>
+        </div>
+    </div>
+
+    <!-- Scanner Control Area -->
+    <div class="row w-100 justify-content-center mb-3">
+        <div class="col-12 text-center">
+            <button id="start-scanner-btn" class="btn btn-primary btn-lg shadow">
+                <i class="fas fa-camera"></i> Start Scanner
+            </button>
+            <div id="permission-help" class="text-muted small">
+                <p>If the camera doesn't open, please check your browser permission settings.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Scanner -->
+    <div class="row w-100 justify-content-center">
+        <div class="col-12" style="max-width: 600px;">
+            <div id="qr-reader"></div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Processing...</span>
+        </div>
+        <p class="mt-2">Processing check-in...</p>
+    </div>
+
+    <!-- Result Container -->
+    <div class="result-container" id="resultContainer">
+        <!-- Results will be displayed here -->
+    </div>
+
+    <!-- Back Button -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            {% if user.is_patient %}
+            <a href="{% url 'patients:book_appointment' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Appointments
+            </a>
+            {% elif user.is_doctor %}
+            <a href="{% url 'doctors:doctor_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- HTML5 QR Code Scanner Library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+    let html5QrCode;
+    let isProcessing = false;
+    const startBtn = document.getElementById('start-scanner-btn');
+    const helpText = document.getElementById('permission-help');
+
+    // Initialize logic
+    document.addEventListener('DOMContentLoaded', () => {
+        // Show start button initially
+        startBtn.style.display = 'inline-block';
+        helpText.style.display = 'block';
+
+        startBtn.addEventListener('click', startScanner);
+    });
+
+    function startScanner() {
+        // Hide button during attempt
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Starting...';
+
+        if (typeof Html5Qrcode === 'undefined') {
+            showError("Scanner library not loaded. Please refresh the page.");
+            resetStartButton();
+            return;
+        }
+
+        html5QrCode = new Html5Qrcode("qr-reader");
+
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            // Reduce scanning formats for performance
+            formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+        };
+
+        // Prefer back camera
+        const cameraConfig = { facingMode: "environment" };
+
+        html5QrCode.start(
+            cameraConfig,
+            config,
+            onScanSuccess,
+            onScanFailure
+        ).then(() => {
+            // Success starting
+            startBtn.style.display = 'none';
+            helpText.style.display = 'none';
+        }).catch(err => {
+            console.error("Error starting QR scanner:", err);
+            let msg = "Unable to access camera.";
+            if (err.name === 'NotAllowedError') {
+                msg = "Permission denied. Please allow camera access in your browser settings.";
+            } else if (err.name === 'NotFoundError') {
+                msg = "No camera found on this device.";
+            } else if (err.name === 'NotReadableError') {
+                msg = "Camera is seemingly in use by another application.";
+            }
+            showError(msg);
+            resetStartButton();
+        });
+    }
+
+    function resetStartButton() {
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Scanner';
+        startBtn.style.display = 'inline-block';
+    }
+
+    // Handle successful QR scan
+    function onScanSuccess(decodedText, decodedResult) {
+        if (isProcessing) return; // Prevent multiple scans
+
+        isProcessing = true;
+        console.log("QR Code scanned:", decodedText);
+
+        // Stop scanning to free resources/UI
+        html5QrCode.stop().then(() => {
+            // Show loading spinner
+            document.getElementById('loadingSpinner').classList.add('active');
+
+            // Process check-in
+            processCheckIn(decodedText);
+        }).catch(err => {
+            console.error("Error stopping scanner:", err);
+            // Even if stop fails, try to process
+            processCheckIn(decodedText);
+        });
+    }
+
+    // Handle scan failure (ignore frequent errors during scanning)
+    function onScanFailure(error) {
+        // Silently ignore scan failures for smooth UX
+        // console.warn(`Code scan error = ${error}`);
+    }
+
+    // Process check-in via API
+    function processCheckIn(qrData) {
+        console.log('Processing check-in with QR data:', qrData);
+
+        const url = "{% url 'queues:process_checkin' %}";
+        const csrfToken = getCookie('csrftoken');
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ qr_data: qrData })
+        })
+            .then(response => {
+                return response.json().then(data => ({
+                    ok: response.ok,
+                    status: response.status,
+                    data: data
+                })).catch(err => ({
+                    ok: false,
+                    status: response.status,
+                    data: {} // Failed to parse JSON
+                }));
+            })
+            .then(result => {
+                // Hide loading spinner
+                document.getElementById('loadingSpinner').classList.remove('active');
+
+                if (result.ok && result.data.success) {
+                    // Redirect to status page on success
+                    window.location.href = "{% url 'queues:queue_status' %}";
+                } else {
+                    const errorMsg = result.data.message || 'Check-in failed. Please try again or ask reception.';
+                    showError(errorMsg);
+
+                    // Allow retry
+                    setTimeout(() => {
+                        isProcessing = false;
+                        resetStartButton();
+                    }, 2000);
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                document.getElementById('loadingSpinner').classList.remove('active');
+                showError('Network error. Please check your connection and try again.');
+
+                setTimeout(() => {
+                    isProcessing = false;
+                    resetStartButton();
+                }, 2000);
+            });
+    }
+
+    // Show error message
+    function showError(message) {
+        // Clear previous results/errors
+        const container = document.getElementById('resultContainer');
+        container.innerHTML = `
+            <div class="alert alert-danger alert-custom">
+                <h4><i class="fas fa-exclamation-triangle"></i> Error</h4>
+                <p>${message}</p>
+            </div>
+        `;
+    }
+
+    // Get CSRF token from cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Clean up scanner when page unloads
+    window.onbeforeunload = function () {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().catch(err => console.error("Failed to stop scanner on unload", err));
+        }
+    };
+</script>
+{% endblock %}
