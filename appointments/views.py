@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from datetime import datetime, timedelta
 
-from .models import DoctorAvailability
+from doctors.models import DoctorAvailability
 from .services import AppointmentService
 from .config import SingletonConfig
 

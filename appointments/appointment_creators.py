@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from .models import Appointment, DoctorAvailability
-
+from .models import Appointment
+from doctors.models import DoctorAvailability
 
 class AppointmentCreator(ABC):
     """

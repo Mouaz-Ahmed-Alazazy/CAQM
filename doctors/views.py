@@ -10,9 +10,9 @@ from django.utils import timezone
 from django.forms import modelform_factory
 from django import forms
 
-from .models import Doctor
-from appointments.models import Appointment, DoctorAvailability
-from appointments.services import ScheduleService
+from .models import Doctor, DoctorAvailability
+from appointments.models import Appointment
+from doctors.services import ScheduleService
 from queues.models import Queue
 
 

@@ -1,10 +1,10 @@
 from django.test import TestCase
 from django.utils import timezone
 from datetime import datetime, time, date
-from appointments.models import Appointment, DoctorAvailability
+from appointments.models import Appointment
 from appointments.appointment_creators import ScheduledAppointmentCreator, WalkInAppointmentCreator
 from patients.models import Patient
-from doctors.models import Doctor
+from doctors.models import Doctor, DoctorAvailability
 from accounts.models import User
 
 class AppointmentCreatorTestCase(TestCase):

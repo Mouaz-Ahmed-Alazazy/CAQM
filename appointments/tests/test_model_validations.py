@@ -6,7 +6,8 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import time, timedelta
-from appointments.models import DoctorAvailability, Appointment
+from appointments.models import Appointment
+from doctors.models import DoctorAvailability
 from patients.models import PatientForm
 
 

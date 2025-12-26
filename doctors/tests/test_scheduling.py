@@ -1,6 +1,6 @@
 import pytest
 from django.urls import reverse
-from appointments.models import DoctorAvailability
+from doctors.models import DoctorAvailability
 from datetime import time
 
 @pytest.mark.django_db

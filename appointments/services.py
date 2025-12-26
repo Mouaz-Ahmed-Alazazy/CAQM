@@ -2,8 +2,9 @@ from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
-from .models import Appointment, DoctorAvailability
-from .appointment_creators import ScheduledAppointmentCreator, WalkInAppointmentCreator
+from .models import Appointment
+from doctors.models import DoctorAvailability
+from .appointment_creators import ScheduledAppointmentCreator, WalkInAppointmentCreator, AdminAppointmentCreator
 
 from .config import SingletonConfig
 from doctors.models import Doctor
@@ -40,25 +41,16 @@ class AppointmentService:
     
     @staticmethod
     @transaction.atomic
-    def book_appointment(patient, doctor, appointment_date, start_time, notes='', is_walk_in=False):
+    def book_appointment(patient, doctor, appointment_date, start_time, notes='', is_walk_in=False, is_admin=False):
         """
         Book an appointment using Factory Method pattern.
-        
-        Args:
-            patient: Patient model instance
-            doctor: Doctor model instance
-            appointment_date: Date of the appointment
-            start_time: Start time of the appointment
-            notes: Optional notes for the appointment
-            is_walk_in: If True, creates a walk-in appointment (immediately checked in)
-            
-        Returns:
-            Tuple of (success: bool, appointment or error message)
         """
         try:
             # Select appropriate creator based on appointment type (Factory Method)
             if is_walk_in:
                 creator = WalkInAppointmentCreator()
+            elif is_admin:
+                creator = AdminAppointmentCreator()
             else:
                 creator = ScheduledAppointmentCreator()
             
@@ -193,51 +185,4 @@ class AppointmentService:
 
 
 
-class ScheduleService:
-    """
-    Service layer for doctor schedule management.
-    """
-    
-    @staticmethod
-    @transaction.atomic
-    def update_schedule(doctor, schedule_data):
-        """
-        Update doctor's schedule (clear old slots and create new ones).
-        """
-        try:
-            # Clear old slots for the days being updated
-            days_to_update = [data['day_of_week'] for data in schedule_data]
-            DoctorAvailability.objects.filter(
-                doctor=doctor,
-                day_of_week__in=days_to_update
-            ).delete()
-            
-            # Create new availability slots
-            created_slots = []
-            for data in schedule_data:
-                availability = DoctorAvailability.objects.create(
-                    doctor=doctor,
-                    day_of_week=data['day_of_week'],
-                    start_time=data['start_time'],
-                    end_time=data['end_time'],
-                    slot_duration=data.get('slot_duration', 30),
-                    is_active=data.get('is_active', True)
-                )
-                created_slots.append(availability)
-            
-            return True, f'Successfully created {len(created_slots)} availability slot(s)'
-            
-        except Exception as e:
-            logger.error(f"Error updating schedule for doctor {doctor.pk}: {e}", exc_info=True)
-            return False, f'Failed to update schedule: {str(e)}'
-    
-    @staticmethod
-    def get_doctor_schedule(doctor):
-        """
-        Get doctor's current schedule.
-        """
-        try:
-            return DoctorAvailability.objects.filter(doctor=doctor).order_by('day_of_week')
-        except Exception as e:
-            logger.error(f"Error getting schedule for doctor {doctor.pk}: {e}")
-            return DoctorAvailability.objects.none()
+

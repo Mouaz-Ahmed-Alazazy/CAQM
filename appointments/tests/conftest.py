@@ -2,8 +2,7 @@ import pytest
 from django.test import Client
 from accounts.models import User
 from patients.models import Patient
-from doctors.models import Doctor
-from appointments.models import DoctorAvailability
+from doctors.models import DoctorAvailability, Doctor
 from datetime import time
 
 @pytest.fixture

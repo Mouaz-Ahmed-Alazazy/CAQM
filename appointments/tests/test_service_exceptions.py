@@ -8,9 +8,11 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import DatabaseError
 from datetime import time, timedelta
-from appointments.services import AppointmentService, ScheduleService
+from appointments.services import AppointmentService
+from doctors.services import ScheduleService
 from patients.services import PatientFormService
-from appointments.models import Appointment, DoctorAvailability
+from appointments.models import Appointment
+from doctors.models import DoctorAvailability
 
 
 @pytest.mark.django_db
@@ -234,7 +236,7 @@ class TestPatientFormServiceExceptions:
 class TestScheduleServiceExceptions:
     """Test ScheduleService exception handling"""
     
-    @patch('appointments.models.DoctorAvailability.objects.create')
+    @patch('doctors.models.DoctorAvailability.objects.create')
     def test_update_schedule_database_error(self, mock_create, doctor):
         """Test update_schedule handles database errors"""
         mock_create.side_effect = DatabaseError("DB error")
@@ -259,7 +261,7 @@ class TestScheduleServiceExceptions:
         assert success is True
         assert '0' in message
     
-    @patch('appointments.services.DoctorAvailability.objects.filter')
+    @patch('doctors.models.DoctorAvailability.objects.filter')
     def test_get_doctor_schedule_exception(self, mock_filter, doctor):
         """Test get_doctor_schedule handles exceptions"""
         mock_filter.side_effect = Exception("DB error")

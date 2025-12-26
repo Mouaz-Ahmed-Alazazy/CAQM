@@ -6,42 +6,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class DoctorAvailability(models.Model):
-    """Doctor's working schedule"""
-    
-    DAY_CHOICES = [
-        ('MONDAY', 'Monday'),
-        ('TUESDAY', 'Tuesday'),
-        ('WEDNESDAY', 'Wednesday'),
-        ('THURSDAY', 'Thursday'),
-        ('FRIDAY', 'Friday'),
-        ('SATURDAY', 'Saturday'),
-        ('SUNDAY', 'Sunday'),
-    ]
-    
-    doctor = models.ForeignKey('doctors.Doctor', on_delete=models.CASCADE, related_name='availability')
-    day_of_week = models.CharField(max_length=10, choices=DAY_CHOICES)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    slot_duration = models.IntegerField(default=30, help_text="Duration in minutes")
-    is_active = models.BooleanField(default=True)
-    
-    class Meta:
-        db_table = 'doctor_availability'
-        unique_together = ['doctor', 'day_of_week']
-        verbose_name = 'Doctor Availability'
-        verbose_name_plural = 'Doctor Availabilities'
-    
-    def __str__(self):
-        try:
-            return f"{self.doctor} - {self.get_day_of_week_display()}: {self.start_time}-{self.end_time}"
-        except Exception as e:
-            logger.error(f"Error in DoctorAvailability.__str__: {e}")
-            return f"DoctorAvailability {self.pk}"
-    
-    def clean(self):
-        if self.start_time >= self.end_time:
-            raise ValidationError('End time must be after start time')
 
 
 class Appointment(models.Model):
