@@ -174,6 +174,36 @@ class CheckInService:
             return False, "An error occurred during check-in. Please contact reception.", 0
     
     @staticmethod
+    def call_next_patient(queue_id):
+        """
+        Calls the next patient in the queue.
+        Ends the current 'IN_PROGRESS' consultation and starts the next 'WAITING' one.
+        """
+        from .models import Queue, PatientQueue
+        from django.utils import timezone
+        
+        try:
+            queue = Queue.objects.get(pk=queue_id)
+            
+            # End current consultation if any
+            PatientQueue.objects.filter(queue=queue, status='IN_PROGRESS').update(
+                status='TERMINATED', 
+                consultation_end_time=timezone.now()
+            )
+            
+            # Start next consultation from WAITING list
+            next_p = PatientQueue.objects.filter(queue=queue, status='WAITING').order_by('position').first()
+            if next_p:
+                next_p.status = 'IN_PROGRESS'
+                next_p.consultation_start_time = timezone.now()
+                next_p.save()
+                return True, f"Called {next_p.patient}", next_p
+            return False, "No more patients in queue.", None
+        except Exception as e:
+            logger.error(f"Error calling next patient: {e}")
+            return False, str(e), None
+
+    @staticmethod
     def process_check_in(user, qr_data):
         """
         Main entry point for processing check-in from QR code.
