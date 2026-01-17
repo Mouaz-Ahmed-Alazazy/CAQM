@@ -2,7 +2,6 @@
 URL configuration for queues app.
 """
 from django.urls import path
-from . import views
 from .views import QRScannerView, ProcessCheckInView, PatientQueueStatusView
 
 app_name = 'queues'
