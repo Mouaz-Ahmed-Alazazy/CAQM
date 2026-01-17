@@ -1,0 +1,134 @@
+{
+    "project_name": "CAQM",
+    "description": "Clinic Appointment and Queue Management system - A Django web application for managing clinic operations including patient appointments, doctor schedules, and waiting queues",
+    "tech_stack": {
+        "framework": "Django 5.0.14",
+        "language": "Python 3.10+",
+        "database": "SQLite3",
+        "testing": "pytest",
+        "additional_libraries": [
+            "Pillow (image processing)",
+            "qrcode (QR code generation)",
+            "mysqlclient (MySQL support)"
+        ]
+    },
+    "apps": {
+        "accounts": {
+            "description": "User authentication and custom user model",
+            "models": [
+                "User (custom AUTH_USER_MODEL)"
+            ],
+            "key_features": [
+                "Login",
+                "Registration",
+                "User management",
+                "Notifications"
+            ]
+        },
+        "patients": {
+            "description": "Patient profile and medical form management",
+            "models": [
+                "Patient",
+                "PatientForm"
+            ],
+            "key_features": [
+                "Patient profile with emergency contact validation",
+                "Medical history forms submission",
+                "View submitted forms"
+            ],
+            "services": [
+                "PatientFormService"
+            ]
+        },
+        "doctors": {
+            "description": "Doctor profiles and availability scheduling",
+            "models": [
+                "Doctor",
+                "DoctorAvailability"
+            ],
+            "key_features": [
+                "Doctor profiles with specializations (Cardiology, Dermatology, Neurology, Orthopedics, Pediatrics, Psychiatry, General)",
+                "Weekly availability scheduling",
+                "Available time slot calculation",
+                "15 appointments per day limit"
+            ],
+            "services": [
+                "ScheduleService"
+            ]
+        },
+        "appointments": {
+            "description": "Appointment booking and management with Factory Method pattern",
+            "models": [
+                "Appointment"
+            ],
+            "key_features": [
+                "Scheduled appointments",
+                "Walk-in appointments (auto checked-in)",
+                "Appointment statuses (SCHEDULED, CHECKED_IN, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW)",
+                "Validation rules (no past dates, one appointment per specialization per day, max 15 per doctor per day)",
+                "Appointment modification and cancellation",
+                "Available slot checking"
+            ],
+            "services": [
+                "AppointmentService"
+            ],
+            "design_patterns": [
+                "Factory Method (AppointmentCreator, ScheduledAppointmentCreator, WalkInAppointmentCreator)",
+                "Singleton (SingletonConfig)"
+            ]
+        },
+        "queues": {
+            "description": "Patient queue management",
+            "key_features": [
+                "Queue tracking",
+                "Patient notifications"
+            ]
+        },
+        "admins": {
+            "description": "Administrative functions",
+            "key_features": [
+                "System oversight",
+                "User management",
+                "Record maintenance"
+            ]
+        },
+        "nurses": {
+            "description": "Nurse-specific functionality",
+            "key_features": [
+                "Patient queue management"
+            ]
+        }
+    },
+    "existing_tests": {
+        "appointments": [
+            "test_appointment_creators.py - Tests for Factory Method pattern creators",
+            "test_model_validations.py - Tests for Appointment model validation rules",
+            "test_service_exceptions.py - Tests for AppointmentService exception handling",
+            "conftest.py - Pytest fixtures"
+        ],
+        "doctors": [
+            "test_additional.py",
+            "test_permissions.py",
+            "test_scheduling.py",
+            "test_viewing.py",
+            "conftest.py"
+        ],
+        "patients": [
+            "test_additional.py",
+            "test_booking.py",
+            "test_management.py",
+            "test_permissions.py",
+            "test_viewing.py",
+            "conftest.py"
+        ]
+    },
+    "key_business_rules": [
+        "Cannot book appointments in the past",
+        "Patient can only have one appointment per specialization per day",
+        "Doctor limited to 15 appointments per day",
+        "Unique constraint on (doctor, appointment_date, start_time)",
+        "Walk-in appointments automatically set to CHECKED_IN status",
+        "Scheduled appointments start with SCHEDULED status",
+        "Emergency contact must match format: 091/092/093/094 followed by 7 digits"
+    ]
+}

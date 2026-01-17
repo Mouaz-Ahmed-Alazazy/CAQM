@@ -82,26 +82,3 @@ class WalkInAppointmentCreator(AppointmentCreator):
         )
 
 
-class AdminAppointmentCreator(AppointmentCreator):
-    """
-    Concrete creator for appointments created by administrators.
-    """
-    
-    def create_product(self, patient, doctor, appointment_date, start_time, notes='') -> Appointment:
-        """
-        Create an admin-managed appointment.
-        """
-        end_time = self._calculate_end_time(doctor, appointment_date, start_time)
-        
-        admin_notes = f"[ADMIN] {notes}" if notes else "[ADMIN] Created by administrator."
-        
-        return Appointment(
-            patient=patient,
-            doctor=doctor,
-            appointment_date=appointment_date,
-            start_time=start_time,
-            end_time=end_time,
-            notes=admin_notes,
-            status='SCHEDULED'
-        )
-

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "patient_appointment_booking_validation",
+    "description": "Test the appointment booking API to ensure it enforces validation rules such as no booking for past dates, one appointment per specialization per day per patient, and daily limit of 15 appointments per doctor."
+  },
+  {
+    "id": "TC002",
+    "title": "doctor_availability_scheduling_limit",
+    "description": "Verify the API for doctor availability scheduling enforces the maximum of 15 appointments per day and respects the weekly availability time slots."
+  },
+  {
+    "id": "TC003",
+    "title": "digital_checkin_qrcode_generation",
+    "description": "Test the digital check-in API to confirm unique QR codes are generated per appointment and linked correctly to appointment data for patient check-in."
+  },
+  {
+    "id": "TC004",
+    "title": "real_time_queue_tracking",
+    "description": "Validate the queue tracking API provides real-time updates on patient queue status and position, ensuring FIFO order management and notifications."
+  },
+  {
+    "id": "TC005",
+    "title": "user_authentication_and_role_access",
+    "description": "Test the user login and multi-role authentication API to ensure secure access control for patients, doctors, nurses, and admins with appropriate permissions."
+  },
+  {
+    "id": "TC006",
+    "title": "appointment_modification_and_cancellation",
+    "description": "Verify the appointment modification and cancellation API correctly updates appointment status and enforces validation rules."
+  },
+  {
+    "id": "TC007",
+    "title": "emergency_contact_validation",
+    "description": "Test patient registration and profile update APIs to validate emergency contact numbers start with 091, 092, 093, or 094 followed by 7 digits."
+  },
+  {
+    "id": "TC008",
+    "title": "notification_delivery_reliability",
+    "description": "Test the notification API to ensure reliable delivery with retries on failure and support for multi-channel delivery including in-app, email, and SMS."
+  },
+  {
+    "id": "TC009",
+    "title": "patient_feedback_submission",
+    "description": "Verify the patient feedback API allows submission of feedback and ratings for doctors and clinic services, ensuring required fields are validated."
+  },
+  {
+    "id": "TC010",
+    "title": "admin_announcement_broadcast",
+    "description": "Test the admin announcement API to ensure admins can broadcast important news to users and notifications are delivered properly."
+  }
+]

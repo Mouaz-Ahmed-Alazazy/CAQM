@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:9000",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "CAQM",
+    "projectPath": "c:\\Users\\mouaz\\CS438\\CAQM",
+    "testIds": [],
+    "additionalInstruction": "Focus on generating comprehensive unit tests for the appointments, doctors, and patients apps. Ensure tests cover all service methods, model validations, and business logic including the Factory Method pattern in appointment_creators.py.",
+    "envs": {
+      "API_KEY": "sk-user-NN9VNcKKDzp-XGScgAJu8veH5BHFC8cA8Ni8azugTmiLELlB2ftvm_it8f-TBagwsVjd4SP5vUIdIvLbB0wdVtuUC7Ai0E_eEvOfi3n-J3EC9xfpEWQSbwr8BQT2ZnoaGvA"
+    }
+  },
+  "proxy": "http://7627a5d0-a045-4b29-b82d-795c845f0a4d:TADLGIDPCgLNMxvqalyNSwheiXtACA0c@tun.testsprite.com:8080"
+}

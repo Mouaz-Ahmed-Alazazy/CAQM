@@ -4,7 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 from .models import Appointment
 from doctors.models import DoctorAvailability
-from .appointment_creators import ScheduledAppointmentCreator, WalkInAppointmentCreator, AdminAppointmentCreator
+from .appointment_creators import ScheduledAppointmentCreator, WalkInAppointmentCreator
 
 from .config import SingletonConfig
 from doctors.models import Doctor
@@ -41,7 +41,7 @@ class AppointmentService:
     
     @staticmethod
     @transaction.atomic
-    def book_appointment(patient, doctor, appointment_date, start_time, notes='', is_walk_in=False, is_admin=False):
+    def book_appointment(patient, doctor, appointment_date, start_time, notes='', is_walk_in=False):
         """
         Book an appointment using Factory Method pattern.
         """
@@ -49,8 +49,6 @@ class AppointmentService:
             # Select appropriate creator based on appointment type (Factory Method)
             if is_walk_in:
                 creator = WalkInAppointmentCreator()
-            elif is_admin:
-                creator = AdminAppointmentCreator()
             else:
                 creator = ScheduledAppointmentCreator()
             

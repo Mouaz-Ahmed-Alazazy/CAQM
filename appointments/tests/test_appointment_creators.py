@@ -88,23 +88,7 @@ class AppointmentCreatorTestCase(TestCase):
         self.assertIn("Walk-in appointment", appointment.notes)
         self.assertIn("Emergency pain", appointment.notes)
 
-    def test_admin_appointment_creator(self):
-        from appointments.appointment_creators import AdminAppointmentCreator
-        creator = AdminAppointmentCreator()
-        appointment = creator.create_product(
-            patient=self.patient,
-            doctor=self.doctor,
-            appointment_date=self.appointment_date,
-            start_time=time(14, 0),
-            notes="Manual entry"
-        )
-        
-        # Verify fields specific to Admin
-        self.assertEqual(appointment.status, 'SCHEDULED')
-        self.assertEqual(appointment.start_time, time(14, 0))
-        self.assertIn("[ADMIN]", appointment.notes)
-        self.assertIn("Manual entry", appointment.notes)
-
+  
     def test_creator_raises_error_when_doctor_unavailable(self):
         
         DoctorAvailability.objects.all().delete()
