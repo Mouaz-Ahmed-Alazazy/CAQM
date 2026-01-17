@@ -68,14 +68,43 @@
         </div>
     </div>
     <div class="col-md-2">
-        <form method="post" action="{% url 'nurses:call_next_patient' %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary w-100 h-100" {% if current_patient or not waiting_patients %}disabled{% endif %}>
-                <i class="fas fa-bell"></i><br>Call Next
-            </button>
-        </form>
+        <button id="call-next-btn" class="btn btn-primary w-100 h-100" {% if current_patient or not waiting_patients %}disabled{% endif %} data-queue-id="{{ queue.id }}">
+            <i class="fas fa-bell"></i><br>Call Next
+        </button>
     </div>
 </div>
+
+<script>
+document.getElementById('call-next-btn').addEventListener('click', function() {
+    const queueId = this.getAttribute('data-queue-id');
+    const btn = this;
+    btn.disabled = true;
+    
+    fetch('{% url "queues:call_next_patient" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: `queue_id=${queueId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+        btn.disabled = false;
+    });
+});
+</script>
 
 <!-- Current Patient -->
 {% if current_patient %}

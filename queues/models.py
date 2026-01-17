@@ -69,7 +69,21 @@ class Queue(models.Model):
         return self.patient_queues.count() == 0
     
     def get_estimated_wait_time(self, position):
-        return position * 30
+        """
+        Calculate dynamic wait time based on average consultation duration.
+        Defaults to 20 mins if no data is available.
+        """
+        recent_consultations = PatientQueue.objects.filter(
+            queue__doctor=self.doctor,
+            status='TERMINATED',
+            consultation_start_time__isnull=False,
+            consultation_end_time__isnull=False
+        ).order_by('-consultation_end_time')[:5]
+        
+        durations = [q.get_consultation_duration() for q in recent_consultations if q.get_consultation_duration() > 0]
+        
+        avg_duration = sum(durations) / len(durations) if durations else 20
+        return int(position * avg_duration)
     
     def enqueue(self, patient_id):
         """

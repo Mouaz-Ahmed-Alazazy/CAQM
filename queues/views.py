@@ -78,6 +78,22 @@ class ProcessCheckInView(LoginRequiredMixin, View):
             }, status=500)
 
 
+class CallNextPatientView(LoginRequiredMixin, View):
+    """
+    API view for nurses/doctors to call the next patient in the queue.
+    """
+    def post(self, request, *args, **kwargs):
+        queue_id = request.POST.get('queue_id')
+        if not queue_id:
+            return JsonResponse({'success': False, 'message': 'Queue ID is required.'}, status=400)
+            
+        success, message, entry = CheckInService.call_next_patient(queue_id)
+        return JsonResponse({
+            'success': success,
+            'message': message,
+            'patient_name': str(entry.patient) if entry else None
+        })
+
 class PatientQueueStatusView(LoginRequiredMixin, TemplateView):
     """
     Display real-time queue status for a patient.
