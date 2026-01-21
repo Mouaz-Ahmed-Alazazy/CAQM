@@ -180,7 +180,7 @@
 
                 <div class="mt-3 text-muted small">
                     <i class="fas fa-info-circle me-1"></i>
-                    Last updated: {% now "H:i" %}
+                    Last updated: <span id="last-updated">{% now "H:i" %}</span>
                 </div>
             </div>
 
@@ -200,6 +200,34 @@
     </div>
 </div>
 
-<!-- Auto-refresh every 60 seconds -->
-<meta http-equiv="refresh" content="60">
+<script>
+    function updateQueueStatus() {
+        fetch('{% url "queues:queue_status_api" %}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.has_active_queue) {
+                    document.querySelector('.position-number').textContent = data.position;
+                    const waitTimeElement = document.querySelector('.info-value.text-primary');
+                    if (data.estimated_time > 0) {
+                        waitTimeElement.innerHTML = `<i class="far fa-clock me-2"></i> ${data.estimated_time} mins`;
+                    } else {
+                        waitTimeElement.innerHTML = `<i class="far fa-clock me-2"></i> Soon`;
+                    }
+                    document.querySelectorAll('.info-value')[1].textContent = `${data.people_ahead} patients`;
+                    document.getElementById('last-updated').textContent = data.last_updated;
+                    
+                    if (data.status === 'IN_PROGRESS') {
+                         // Optionally update UI for being called
+                         location.reload(); // Hard refresh if status changed to IN_PROGRESS to show consultation UI
+                    }
+                } else {
+                    location.reload(); // Refresh to show "No Active Queue" if they were removed
+                }
+            })
+            .catch(error => console.error('Error fetching queue status:', error));
+    }
+
+    // Update every 30 seconds
+    setInterval(updateQueueStatus, 30000);
+</script>
 {% endblock %}
