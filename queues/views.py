@@ -130,6 +130,42 @@ class QueueStatusAPIView(LoginRequiredMixin, View):
             'last_updated': timezone.now().strftime("%H:%M")
         })
 
+class QueueStatusAPIView(LoginRequiredMixin, View):
+    """
+    API view for fetching real-time queue status as JSON.
+    """
+    def get(self, request, *args, **kwargs):
+        patient = request.user.patient_profile
+        today = timezone.now().date()
+        
+        queue_entry = PatientQueue.objects.filter(
+            patient=patient,
+            queue__date=today,
+            status__in=['WAITING', 'IN_PROGRESS']
+        ).first()
+        
+        if not queue_entry:
+            return JsonResponse({'has_active_queue': False})
+            
+        people_ahead = PatientQueue.objects.filter(
+            queue=queue_entry.queue,
+            status='WAITING',
+            position__lt=queue_entry.position
+        ).count()
+        
+        # Recalculate estimated time dynamically
+        estimated_time = queue_entry.queue.get_estimated_wait_time(people_ahead + 1)
+        
+        return JsonResponse({
+            'has_active_queue': True,
+            'position': queue_entry.position,
+            'estimated_time': estimated_time,
+            'people_ahead': people_ahead,
+            'status': queue_entry.status,
+            'doctor_name': str(queue_entry.queue.doctor),
+            'last_updated': timezone.now().strftime("%H:%M")
+        })
+
 class PatientQueueStatusView(LoginRequiredMixin, TemplateView):
     """
     Display real-time queue status for a patient.
