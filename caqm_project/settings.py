@@ -32,6 +32,10 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.replit.dev",
     "https://*.replit.app",
     "https://*.repl.co",
+    "http://127.0.0.1",
+    "http://localhost",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
 ]
 
 

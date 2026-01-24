@@ -66,9 +66,15 @@ class NurseService:
     def call_next_patient(queue):
         """
         Call the next patient from the queue to start consultation.
+        Requires doctor to have checked in first.
         """
         if not queue:
             return False, "No queue available"
+        
+        # GUARD: Check if doctor has checked in
+        from queues.services import CheckInService
+        if not CheckInService.is_doctor_checked_in(queue.doctor, queue.date):
+            return False, "Doctor hasn't checked in yet."
         
         # Check if there's already a patient in progress
         current = NurseService.get_current_patient(queue)
@@ -96,9 +102,15 @@ class NurseService:
     def start_consultation(patient_queue_id):
         """
         Start consultation for a specific patient.
+        Requires doctor to have checked in first.
         """
         try:
             patient_queue = PatientQueue.objects.get(pk=patient_queue_id)
+            
+            # GUARD: Check if doctor has checked in
+            from queues.services import CheckInService
+            if not CheckInService.is_doctor_checked_in(patient_queue.queue.doctor, patient_queue.queue.date):
+                return False, "Doctor hasn't checked in yet."
             
             if patient_queue.status != 'WAITING':
                 return False, "Patient is not in waiting status"

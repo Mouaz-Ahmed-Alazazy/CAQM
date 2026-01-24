@@ -153,8 +153,6 @@ class PatientQueue(models.Model):
     is_emergency = models.BooleanField(default=False)
     checkedin_via_qrcode = models.BooleanField(default=False)
     
-    checkedin_via_qrcode = models.BooleanField(default=False)
-    
     consultation_start_time = models.DateTimeField(null=True, blank=True)
     consultation_end_time = models.DateTimeField(null=True, blank=True)
     

@@ -44,7 +44,10 @@ class AppointmentService:
     def book_appointment(patient, doctor, appointment_date, start_time, notes='', is_walk_in=False):
         """
         Book an appointment using Factory Method pattern.
+        Also creates a Queue for the doctor on that date (triggers QR code generation).
         """
+        from queues.models import Queue  # Import here to avoid circular imports
+        
         try:
             # Select appropriate creator based on appointment type (Factory Method)
             if is_walk_in:
@@ -64,6 +67,9 @@ class AppointmentService:
                 appointment.save()
             except ValueError as e:
                 return False, str(e)
+            
+            # Create Queue for this doctor/date if it doesn't exist (triggers QR code generation)
+            Queue.objects.get_or_create(doctor=doctor, date=appointment_date)
             
             return True, appointment
             

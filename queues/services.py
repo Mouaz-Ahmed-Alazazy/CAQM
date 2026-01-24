@@ -69,34 +69,8 @@ class CheckInService:
     @staticmethod
     def verify_doctor_consultation(doctor, date):
         """
-        Verify that the doctor has scheduled consultations (appointments) on the given date.
-        """
-        try:
-            appointment = Appointment.objects.get(
-                patient=patient,
-                doctor=doctor,
-                appointment_date=date,
-                status='SCHEDULED'
-            )
-            return appointment
-            
-        except Appointment.DoesNotExist:
-            logger.warning(f"No scheduled appointment found for patient {patient.pk} with doctor {doctor.pk} on {date}")
-            return None
-        except Appointment.MultipleObjectsReturned:
-            # Should not happen due to unique_together constraint, but handle it
-            logger.error(f"Multiple appointments found for patient {patient.pk} with doctor {doctor.pk} on {date}")
-            return Appointment.objects.filter(
-                patient=patient,
-                doctor=doctor,
-                appointment_date=date,
-                status='SCHEDULED'
-            ).first()
-    
-    @staticmethod
-    def verify_doctor_consultation(doctor, date):
-        """
-        Verify that the doctor has scheduled consultations (appointments) on the given date.    
+        Verify that the doctor has scheduled appointments for the given date.
+        Returns True if doctor has any scheduled appointments, False otherwise.
         """
         has_consultations = Appointment.objects.filter(
             doctor=doctor,
@@ -108,6 +82,19 @@ class CheckInService:
             logger.warning(f"Doctor {doctor.pk} has no consultations scheduled for {date}")
         
         return has_consultations
+    
+    @staticmethod
+    def is_doctor_checked_in(doctor, date):
+        """
+        Check if doctor has checked in for the given date.
+        Doctor is considered checked-in if any of their appointments for that date
+        has status CHECKED_IN, IN_PROGRESS, or COMPLETED.
+        """
+        return Appointment.objects.filter(
+            doctor=doctor,
+            appointment_date=date,
+            status__in=['CHECKED_IN', 'IN_PROGRESS', 'COMPLETED']
+        ).exists()
     
     @staticmethod
     def check_in_patient(patient, queue, appointment):

@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from accounts.models import User
 from patients.models import Patient
 from doctors.models import Doctor
+from nurses.models import Nurse
 from accounts.notifications import NotificationService
 import logging
 
@@ -50,6 +51,11 @@ class AdminService:
                     specialization=kwargs.get('specialization'),
                     license_number=kwargs.get('license_number', ''),
                     years_of_experience=kwargs.get('years_of_experience', 0)
+                )
+            elif role == 'NURSE':
+                Nurse.objects.create(
+                    user=user,
+                    assigned_doctor=kwargs.get('assigned_doctor')
                 )
             
             # Send registration confirmation

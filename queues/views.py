@@ -81,11 +81,27 @@ class ProcessCheckInView(LoginRequiredMixin, View):
 class CallNextPatientView(LoginRequiredMixin, View):
     """
     API view for nurses/doctors to call the next patient in the queue.
+    Requires doctor to have checked in first.
     """
     def post(self, request, *args, **kwargs):
+        from .models import Queue
+        
         queue_id = request.POST.get('queue_id')
         if not queue_id:
             return JsonResponse({'success': False, 'message': 'Queue ID is required.'}, status=400)
+        
+        # Get queue
+        try:
+            queue = Queue.objects.get(pk=queue_id)
+        except Queue.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Queue not found.'}, status=404)
+        
+        # GUARD: Block if doctor hasn't checked in
+        if not CheckInService.is_doctor_checked_in(queue.doctor, queue.date):
+            return JsonResponse({
+                'success': False, 
+                'message': "Doctor hasn't checked in yet."
+            }, status=400)
             
         success, message, entry = CheckInService.call_next_patient(queue_id)
         return JsonResponse({
@@ -129,43 +145,6 @@ class QueueStatusAPIView(LoginRequiredMixin, View):
             'doctor_name': str(queue_entry.queue.doctor),
             'last_updated': timezone.now().strftime("%H:%M")
         })
-
-class QueueStatusAPIView(LoginRequiredMixin, View):
-    """
-    API view for fetching real-time queue status as JSON.
-    """
-    def get(self, request, *args, **kwargs):
-        patient = request.user.patient_profile
-        today = timezone.now().date()
-        
-        queue_entry = PatientQueue.objects.filter(
-            patient=patient,
-            queue__date=today,
-            status__in=['WAITING', 'IN_PROGRESS']
-        ).first()
-        
-        if not queue_entry:
-            return JsonResponse({'has_active_queue': False})
-            
-        people_ahead = PatientQueue.objects.filter(
-            queue=queue_entry.queue,
-            status='WAITING',
-            position__lt=queue_entry.position
-        ).count()
-        
-        # Recalculate estimated time dynamically
-        estimated_time = queue_entry.queue.get_estimated_wait_time(people_ahead + 1)
-        
-        return JsonResponse({
-            'has_active_queue': True,
-            'position': queue_entry.position,
-            'estimated_time': estimated_time,
-            'people_ahead': people_ahead,
-            'status': queue_entry.status,
-            'doctor_name': str(queue_entry.queue.doctor),
-            'last_updated': timezone.now().strftime("%H:%M")
-        })
-
 class PatientQueueStatusView(LoginRequiredMixin, TemplateView):
     """
     Display real-time queue status for a patient.

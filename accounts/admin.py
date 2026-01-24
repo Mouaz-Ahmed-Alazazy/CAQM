@@ -4,6 +4,7 @@ from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django import forms
 from .models import User
 from doctors.models import Doctor
+from nurses.models import Nurse
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -105,7 +106,17 @@ class UserAdmin(BaseUserAdmin):
                 self.message_user(
                     request,
                     f'Doctor profile created for {obj.get_full_name()}. Please update specialization and other details.',
-                    level='warning'
+                    level='info'
+                )
+        
+        # If new user with NURSE role, create nurse profile
+        elif is_new and obj.role == 'NURSE':
+            if not hasattr(obj, 'nurse_profile'):
+                Nurse.objects.create(user=obj)
+                self.message_user(
+                    request,
+                    f'Nurse profile created for {obj.get_full_name()}.',
+                    level='info'
                 )
 
 
