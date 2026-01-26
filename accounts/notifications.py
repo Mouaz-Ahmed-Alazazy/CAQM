@@ -28,14 +28,6 @@ class NotificationService:
     def send_notification(cls, user, notification_type: str, context: Dict[str, Any] = None):
         """
         Send a notification to a user.
-        
-        Args:
-            user: User object to send notification to
-            notification_type: Type of notification (must be in NOTIFICATION_TYPES)
-            context: Additional context data for the notification template
-            
-        Returns:
-            bool: True if notification was sent successfully, False otherwise
         """
         if notification_type not in cls.NOTIFICATION_TYPES:
             logger.error(f"Invalid notification type: {notification_type}")
@@ -68,7 +60,7 @@ Type: {notification_type}
 {'='*60}
             """)
             
-            # In production, this would send actual email/SMS/push notification
+            # In the future, this would send actual email/SMS/push notification
             # For now, we just log it
             
             return True

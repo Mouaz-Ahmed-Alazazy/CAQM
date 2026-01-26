@@ -1,6 +1,3 @@
-"""
-Services for nurse operations following the service layer pattern.
-"""
 from django.utils import timezone
 from django.db import transaction
 from queues.models import Queue, PatientQueue
