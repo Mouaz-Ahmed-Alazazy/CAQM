@@ -177,6 +177,12 @@
             loadAvailableSlots();
         });
 
+        // Check if values are already selected (e.g. from URL parameters) and load slots
+        if (doctorSelect.val() && dateInput.val()) {
+            console.log('Pre-selected values found, loading slots...');
+            loadAvailableSlots();
+        }
+
         // Enable submit button only when time slot is selected
         timeSlotSelect.on('change', function () {
             const val = $(this).val();

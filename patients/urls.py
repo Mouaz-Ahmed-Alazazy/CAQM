@@ -4,6 +4,8 @@ from . import views
 app_name = 'patients'
 
 urlpatterns = [
+    # Home
+    path('', views.HomePageView.as_view(), name='home'),
     # Appointment booking
     path('book/', views.BookAppointmentView.as_view(), name='book_appointment'),
     path('my-appointments/', views.MyAppointmentsView.as_view(), name='my_appointments'),

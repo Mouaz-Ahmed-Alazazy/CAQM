@@ -30,6 +30,22 @@ class PatientRequiredMixin(UserPassesTestMixin):
         return redirect('accounts:login')
 
 
+class HomePageView(LoginRequiredMixin, PatientRequiredMixin, ListView):
+    """View All Doctors' Availabilities"""
+    model = Doctor
+    template_name = 'patients/home.html'
+    context_object_name = 'doctors'
+
+    def get_queryset(self):
+        """Get all doctors"""
+        return Doctor.objects.select_related('user').prefetch_related('availability').all()
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['doctors'] = self.get_queryset()
+        return context
+
+
 class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
     """
     Book new appointment.
@@ -38,6 +54,20 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
     template_name = 'patients/book_appointment.html'
     success_url = reverse_lazy('patients:my_appointments')
     fields = ['doctor', 'appointment_date', 'start_time', 'notes']
+
+    def get_initial(self):
+        """Pre-fill form with query parameters"""
+        initial = super().get_initial()
+        if 'doctor' in self.request.GET:
+            initial['doctor'] = self.request.GET.get('doctor')
+        
+        if 'date' in self.request.GET:
+            try:
+                initial['appointment_date'] = datetime.strptime(self.request.GET.get('date'), '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                pass
+                
+        return initial
     
     def get_form(self, form_class=None):
         """Customize the form inline"""
