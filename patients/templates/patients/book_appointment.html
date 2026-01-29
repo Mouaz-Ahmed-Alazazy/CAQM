@@ -2,9 +2,142 @@
 
 {% block title %}Book Appointment - CAQM{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Doctor Schedule Panel Styles */
+    .doctor-schedule-panel {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 12px;
+        border: 1px solid #dee2e6;
+        position: sticky;
+        top: 20px;
+    }
+
+    .schedule-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        color: white;
+        padding: 1.25rem;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+    }
+
+    .schedule-header h5 {
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .schedule-body {
+        padding: 1.25rem;
+    }
+
+    .schedule-placeholder {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #6c757d;
+    }
+
+    .schedule-placeholder i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #adb5bd;
+    }
+
+    .doctor-info-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .doctor-info-card .doctor-name {
+        font-weight: 600;
+        color: #212529;
+        font-size: 1.1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .doctor-info-card .specialty-badge {
+        background: linear-gradient(135deg, #198754 0%, #157347 100%);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        display: inline-block;
+    }
+
+    .schedule-day-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: white;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+    }
+
+    .schedule-day-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .schedule-day-item .day-name {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .schedule-day-item .day-time {
+        color: #0d6efd;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .schedule-loading {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .schedule-loading .spinner-border {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .no-availability-msg {
+        text-align: center;
+        padding: 1.5rem;
+        color: #dc3545;
+    }
+
+    .no-availability-msg i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Fade-in animation */
+    .fade-in {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-10">
+<div class="row">
+    <!-- Left Column: Booking Form -->
+    <div class="col-lg-8 col-md-7 mb-4">
         <div class="card">
             <div class="card-body p-5">
                 <h2 class="card-title mb-4">
@@ -75,6 +208,47 @@
             </div>
         </div>
     </div>
+
+    <!-- Right Column: Doctor Schedule Panel -->
+    <div class="col-lg-4 col-md-5">
+        <div class="doctor-schedule-panel">
+            <div class="schedule-header">
+                <h5><i class="fas fa-calendar-week me-2"></i>Weekly Schedule</h5>
+            </div>
+            <div class="schedule-body" id="scheduleContent">
+                <!-- Placeholder state -->
+                <div class="schedule-placeholder" id="schedulePlaceholder">
+                    <i class="fas fa-user-md d-block"></i>
+                    <p class="mb-0">Select a doctor to view their<br>weekly availability</p>
+                </div>
+
+                <!-- Loading state (hidden by default) -->
+                <div class="schedule-loading d-none" id="scheduleLoading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 mb-0 text-muted">Loading schedule...</p>
+                </div>
+
+                <!-- Schedule display (hidden by default) -->
+                <div class="d-none" id="scheduleDisplay">
+                    <div class="doctor-info-card" id="doctorInfoCard">
+                        <div class="doctor-name" id="doctorNameDisplay">-</div>
+                        <span class="specialty-badge" id="specialtyDisplay">-</span>
+                    </div>
+                    <div id="scheduleDaysList">
+                        <!-- Days will be dynamically inserted here -->
+                    </div>
+                </div>
+
+                <!-- No availability state (hidden by default) -->
+                <div class="no-availability-msg d-none" id="noAvailabilityMsg">
+                    <i class="fas fa-calendar-times d-block"></i>
+                    <p class="mb-0">This doctor has no availability set.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -91,12 +265,90 @@
         const timeSlotSelect = $('#id_start_time');
         const submitBtn = $('#submitBtn');
 
+        // Schedule panel elements
+        const schedulePlaceholder = $('#schedulePlaceholder');
+        const scheduleLoading = $('#scheduleLoading');
+        const scheduleDisplay = $('#scheduleDisplay');
+        const noAvailabilityMsg = $('#noAvailabilityMsg');
+        const doctorNameDisplay = $('#doctorNameDisplay');
+        const specialtyDisplay = $('#specialtyDisplay');
+        const scheduleDaysList = $('#scheduleDaysList');
+
         console.log('Form elements found:', {
             doctor: doctorSelect.length,
             date: dateInput.length,
             timeSlot: timeSlotSelect.length,
             submit: submitBtn.length
         });
+
+        function hideAllScheduleStates() {
+            schedulePlaceholder.addClass('d-none');
+            scheduleLoading.addClass('d-none');
+            scheduleDisplay.addClass('d-none');
+            noAvailabilityMsg.addClass('d-none');
+        }
+
+        function loadDoctorSchedule(doctorId) {
+            console.log('=== loadDoctorSchedule called with ID:', doctorId);
+
+            if (!doctorId) {
+                hideAllScheduleStates();
+                schedulePlaceholder.removeClass('d-none');
+                return;
+            }
+
+            // Show loading
+            hideAllScheduleStates();
+            scheduleLoading.removeClass('d-none');
+
+            const scheduleUrl = '{% url "appointments:get_doctor_availability" %}';
+            console.log('Fetching schedule from:', scheduleUrl);
+
+            $.ajax({
+                url: scheduleUrl,
+                method: 'GET',
+                data: { doctor_id: doctorId },
+                success: function (response) {
+                    console.log('=== Schedule AJAX SUCCESS ===', response);
+                    hideAllScheduleStates();
+
+                    if (response.error) {
+                        console.error('Server error:', response.error);
+                        noAvailabilityMsg.find('p').text(response.error);
+                        noAvailabilityMsg.removeClass('d-none');
+                        return;
+                    }
+
+                    if (response.schedule && response.schedule.length > 0) {
+                        // Update doctor info
+                        doctorNameDisplay.text(response.doctor_name);
+                        specialtyDisplay.text(response.specialization);
+
+                        // Build schedule days list
+                        scheduleDaysList.empty();
+                        response.schedule.forEach(function (day) {
+                            const dayHtml = `
+                                <div class="schedule-day-item fade-in">
+                                    <span class="day-name">${day.day_display}</span>
+                                    <span class="day-time">${day.start_time} - ${day.end_time}</span>
+                                </div>
+                            `;
+                            scheduleDaysList.append(dayHtml);
+                        });
+
+                        scheduleDisplay.removeClass('d-none');
+                    } else {
+                        noAvailabilityMsg.removeClass('d-none');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('=== Schedule AJAX ERROR ===', status, error);
+                    hideAllScheduleStates();
+                    noAvailabilityMsg.find('p').text('Error loading schedule');
+                    noAvailabilityMsg.removeClass('d-none');
+                }
+            });
+        }
 
         function loadAvailableSlots() {
             const doctorId = doctorSelect.val();
@@ -166,9 +418,11 @@
             });
         }
 
-        // Load slots when doctor or date changes
+        // Load schedule AND slots when doctor changes
         doctorSelect.on('change', function () {
-            console.log('*** Doctor changed to:', $(this).val());
+            const doctorId = $(this).val();
+            console.log('*** Doctor changed to:', doctorId);
+            loadDoctorSchedule(doctorId);
             loadAvailableSlots();
         });
 
@@ -177,7 +431,11 @@
             loadAvailableSlots();
         });
 
-        // Check if values are already selected (e.g. from URL parameters) and load slots
+        // Check if values are already selected (e.g. from URL parameters) and load
+        if (doctorSelect.val()) {
+            console.log('Pre-selected doctor found, loading schedule...');
+            loadDoctorSchedule(doctorSelect.val());
+        }
         if (doctorSelect.val() && dateInput.val()) {
             console.log('Pre-selected values found, loading slots...');
             loadAvailableSlots();
