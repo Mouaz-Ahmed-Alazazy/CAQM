@@ -16,7 +16,6 @@ iniconfig==2.3.0
 Jinja2==3.1.6
 MarkupSafe==3.0.3
 mypy_extensions==1.1.0
-mysqlclient==2.2.7
 nodeenv==1.9.1
 packaging==25.0
 pathspec==0.12.1

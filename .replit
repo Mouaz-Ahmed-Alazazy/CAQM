@@ -1,10 +1,10 @@
-modules = ["web", "python-3.11"]
+modules = ["python-3.12", "web"]
 [agent]
 expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["awsebcli", "freetype", "lcms2", "libimagequant", "libjpeg", "libmysqlclient", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pgadmin4", "tcl", "tk", "zlib"]
+packages = ["awsebcli", "freefont_ttf", "freetype", "imagemagickBig", "inkscape", "lcms2", "libimagequant", "libjpeg", "libmysqlclient", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pgadmin4", "round", "tcl", "tk", "which", "xdg-utils", "zlib"]
 
 [workflows]
 runButton = "Project"
