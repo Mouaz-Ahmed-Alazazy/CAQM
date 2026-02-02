@@ -33,3 +33,4 @@ qrcode==8.2
 sqlparse==0.5.3
 tzdata==2025.2
 virtualenv==20.35.4
+django-ratelimit

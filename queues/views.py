@@ -6,6 +6,8 @@ from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.views import View
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from appointments.models import Appointment
 from .models import PatientQueue
 from .services import CheckInService
@@ -29,13 +31,20 @@ class QRScannerView(LoginRequiredMixin, TemplateView):
         return context
 
 
+@method_decorator(ratelimit(key='user', rate='10/m', method='POST', block=False), name='post')
 class ProcessCheckInView(LoginRequiredMixin, View):
     """
     Process check-in after QR code is scanned.
+    Rate limited to 10 check-in attempts per minute per user.
     """
     
     def post(self, request, *args, **kwargs):
         """Handle check-in request"""
+        if getattr(request, 'limited', False):
+            return JsonResponse({
+                'success': False,
+                'message': 'Too many check-in attempts. Please wait a minute and try again.'
+            }, status=429)
         try:
             logger.info(f"Check-in request received from user: {request.user.email}")
             logger.info(f"Request body: {request.body}")

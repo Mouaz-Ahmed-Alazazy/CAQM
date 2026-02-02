@@ -4,7 +4,9 @@ from django.views.generic import CreateView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.shortcuts import redirect
+from django.utils.decorators import method_decorator
 from django import forms
+from django_ratelimit.decorators import ratelimit
 from .models import User
 from patients.models import Patient
 from .notifications import NotificationService
@@ -126,12 +128,22 @@ class PatientRegistrationView(CreateView):
         return super().form_invalid(form)
 
 
+@method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=False), name='post')
 class CustomLoginView(LoginView):
     """
     Custom login view with role-based redirects.
+    Rate limited to 5 login attempts per minute per IP.
     """
     template_name = 'accounts/login.html'
     redirect_authenticated_user = True
+    
+    def form_invalid(self, form):
+        if getattr(self.request, 'limited', False):
+            messages.error(
+                self.request,
+                'Too many login attempts. Please try again in a few minutes.'
+            )
+        return super().form_invalid(form)
     
     def get_form(self, form_class=None):
         """Override to customize the form"""
@@ -165,11 +177,6 @@ class CustomLoginView(LoginView):
         messages.success(self.request, f'Welcome back, {form.get_user().get_full_name()}!')
         return super().form_valid(form)
     
-    def form_invalid(self, form):
-        # Don't show generic message, show specific errors
-        return super().form_invalid(form)
-
-
 class CustomLogoutView(LogoutView):
     """Custom logout view"""
     next_page = reverse_lazy('accounts:login')
