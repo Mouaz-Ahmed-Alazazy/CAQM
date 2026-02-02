@@ -21,3 +21,7 @@ if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
+# Custom error handlers
+handler404 = 'caqm_project.views.custom_404'
+handler500 = 'caqm_project.views.custom_500'
+handler403 = 'caqm_project.views.custom_403'

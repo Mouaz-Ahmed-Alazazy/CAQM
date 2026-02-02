@@ -17,3 +17,12 @@ staticfiles/
 *.swp
 *.swo
 docs/
+
+# Environment files
+.env
+.env.local
+.env.production
+*.env
+
+# Logs directory
+logs/

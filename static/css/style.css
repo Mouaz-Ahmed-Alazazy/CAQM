@@ -232,3 +232,108 @@ footer {
     background-color: #f7fafc;
     color: var(--danger);
 }
+
+/* =========================================
+   Mobile Responsiveness & Accessibility
+   ========================================= */
+
+@media (max-width: 767.98px) {
+
+    /* Responsive Tables: Transform to Cards */
+    .table-responsive table,
+    .table-responsive thead,
+    .table-responsive tbody,
+    .table-responsive th,
+    .table-responsive td,
+    .table-responsive tr {
+        display: block;
+    }
+
+    .table-responsive thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .table-responsive tr {
+        margin-bottom: 1rem;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .table-responsive td {
+        border: none;
+        border-bottom: 1px solid #edf2f7;
+        position: relative;
+        padding-left: 50% !important;
+        padding-top: 0.75rem !important;
+        padding-bottom: 0.75rem !important;
+        text-align: right;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .table-responsive td:before {
+        position: absolute;
+        /* top: 50%; */
+        /* transform: translateY(-50%); */
+        left: 1rem;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-weight: 600;
+        color: var(--text-light);
+        content: attr(data-label);
+        text-align: left;
+    }
+
+    .table-responsive td:last-child {
+        border-bottom: 0;
+    }
+
+    /* Adjust specific elements for mobile */
+    .navbar-brand {
+        font-size: 1.25rem;
+    }
+
+    h1,
+    .display-1 {
+        text-align: center;
+    }
+
+    /* Center huge headings */
+
+    .btn {
+        width: 100%;
+        /* Full width buttons on mobile */
+        margin-bottom: 0.5rem;
+    }
+
+    .d-flex {
+        flex-direction: column;
+    }
+
+    .d-flex .btn {
+        margin-right: 0 !important;
+    }
+
+    /* Card adjustments */
+    .card-body {
+        padding: 1rem;
+    }
+
+    /* Disable sticky sidebar on mobile */
+    .doctor-schedule-panel {
+        position: static !important;
+        margin-top: 2rem;
+    }
+}
+
+/* Accessibility Focus States */
+:focus-visible {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 2px;
+}

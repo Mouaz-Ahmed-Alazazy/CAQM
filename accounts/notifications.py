@@ -1,5 +1,8 @@
 import logging
 from typing import Dict, Any
+from django.core.mail import send_mail
+from django.conf import settings
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +63,14 @@ Type: {notification_type}
 {'='*60}
             """)
             
-            # In the future, this would send actual email/SMS/push notification
-            # For now, we just log it
+            # Send actual email if configured
+            # Using threading to avoid blocking the main thread (simple async)
+            if getattr(settings, 'EMAIL_HOST', None):
+                email_thread = threading.Thread(
+                    target=cls._send_email_async,
+                    args=(subject, message, [user.email])
+                )
+                email_thread.start()
             
             return True
         except AttributeError as e:
@@ -113,3 +122,17 @@ Type: {notification_type}
         except Exception as e:
             logger.error(f"Error sending new appointment notification: {e}")
             return False
+    @staticmethod
+    def _send_email_async(subject, message, recipient_list):
+        """Send email asynchronously to avoid blocking response."""
+        try:
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@caqm.com')
+            send_mail(
+                subject,
+                message,
+                from_email,
+                recipient_list,
+                fail_silently=False,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send email to {recipient_list}: {e}")

@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.conf import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,11 @@ class Appointment(models.Model):
         db_table = 'appointments'
         ordering = ['-appointment_date', '-start_time']
         unique_together = ['doctor', 'appointment_date', 'start_time']
+        indexes = [
+            models.Index(fields=['appointment_date', 'status'], name='appt_date_status_idx'),
+            models.Index(fields=['doctor', 'appointment_date'], name='appt_doctor_date_idx'),
+            models.Index(fields=['patient', 'appointment_date'], name='appt_patient_date_idx'),
+        ]
     
     def __str__(self):
         try:
@@ -71,8 +77,11 @@ class Appointment(models.Model):
                 status__in=['SCHEDULED', 'CHECKED_IN']
             ).exclude(pk=self.pk).count()
             
-            if appointments_count >= 15:
-                raise ValidationError('Doctor has reached maximum appointments for this day')
+            max_appointments = getattr(settings, 'MAX_APPOINTMENTS_PER_DAY', 15)
+            if appointments_count >= max_appointments:
+                raise ValidationError(
+                    f'Doctor has reached maximum appointments for this day ({max_appointments})'
+                )
     
     def save(self, *args, **kwargs):
         self.full_clean()

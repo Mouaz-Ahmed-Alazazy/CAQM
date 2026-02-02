@@ -96,7 +96,7 @@ class PatientRegistrationView(CreateView):
         # Redirect authenticated users
         if request.user.is_authenticated:
             if request.user.is_patient():
-                return redirect('patients:book_appointment')
+                return redirect('patients:home')
             elif request.user.is_doctor():
                 return redirect('doctors:doctor_dashboard')
         return super().dispatch(request, *args, **kwargs)
@@ -155,7 +155,7 @@ class CustomLoginView(LoginView):
         if user.is_doctor():
             return reverse_lazy('doctors:doctor_dashboard')
         elif user.is_patient():
-            return reverse_lazy('patients:my_appointments')
+            return reverse_lazy('patients:home')
         elif user.is_nurse():
             return reverse_lazy('nurses:nurse_dashboard')
         else:

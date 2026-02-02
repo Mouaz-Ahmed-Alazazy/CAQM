@@ -1,5 +1,6 @@
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
+from django.conf import settings
 from doctors.models import Doctor
 from patients.models import Patient
 import qrcode
@@ -82,7 +83,8 @@ class Queue(models.Model):
         
         durations = [q.get_consultation_duration() for q in recent_consultations if q.get_consultation_duration() > 0]
         
-        avg_duration = sum(durations) / len(durations) if durations else 20
+        default_duration = getattr(settings, 'DEFAULT_CONSULTATION_DURATION', 20)
+        avg_duration = sum(durations) / len(durations) if durations else default_duration
         return int(position * avg_duration)
     
     def enqueue(self, patient_id):
@@ -168,9 +170,14 @@ class PatientQueue(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk:  # If creating new entry
-            # Calculate position
-            last_position = PatientQueue.objects.filter(queue=self.queue).aggregate(models.Max('position'))['position__max']
-            self.position = (last_position or 0) + 1
+            # Calculate position with locking to prevent race conditions
+            with transaction.atomic():
+                last_position = PatientQueue.objects.filter(
+                    queue=self.queue
+                ).select_for_update().aggregate(
+                    models.Max('position')
+                )['position__max']
+                self.position = (last_position or 0) + 1
             
             # Calculate estimated time
             self.estimated_time = self.queue.get_estimated_wait_time(self.position)

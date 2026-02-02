@@ -16,7 +16,12 @@ from doctors.models import Doctor
 from accounts.notifications import NotificationService
 from appointments.services import AppointmentService
 from .models import PatientForm
+from .models import PatientForm
 from .services import PatientFormService
+from .forms import AppointmentFilterForm
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PatientRequiredMixin(UserPassesTestMixin):
@@ -121,30 +126,30 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
         )
         
         if success:
-            # Send notifications to both patient and doctor
-            try:
-                NotificationService.send_booking_confirmation(
-                    self.request.user,
-                    doctor_name=f"Dr. {doctor.user.get_full_name()}",
-                    date=appointment_date.strftime('%Y-%m-%d'),
-                    time=start_time.strftime('%I:%M %p')
-                )
-                NotificationService.send_new_appointment_notification(
-                    doctor.user,
-                    patient_name=patient.user.get_full_name(),
-                    date=appointment_date.strftime('%Y-%m-%d'),
-                    time=start_time.strftime('%I:%M %p')
-                )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Failed to send booking notifications: {e}")
-            
+            self._send_notifications(doctor, patient, appointment_date, start_time)
             messages.success(self.request, 'Appointment booked successfully!')
             return redirect(self.success_url)
         else:
             messages.error(self.request, result)
             return self.form_invalid(form)
+
+    def _send_notifications(self, doctor, patient, appointment_date, start_time):
+        """Helper to send booking notifications"""
+        try:
+            NotificationService.send_booking_confirmation(
+                self.request.user,
+                doctor_name=f"Dr. {doctor.user.get_full_name()}",
+                date=appointment_date.strftime('%Y-%m-%d'),
+                time=start_time.strftime('%I:%M %p')
+            )
+            NotificationService.send_new_appointment_notification(
+                doctor.user,
+                patient_name=patient.user.get_full_name(),
+                date=appointment_date.strftime('%Y-%m-%d'),
+                time=start_time.strftime('%I:%M %p')
+            )
+        except Exception as e:
+            logger.error(f"Failed to send booking notifications: {e}")
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -157,20 +162,39 @@ class MyAppointmentsView(LoginRequiredMixin, PatientRequiredMixin, ListView):
     model = Appointment
     template_name = 'patients/my_appointments.html'
     context_object_name = 'upcoming_appointments'
+    paginate_by = 10  # Add pagination
+    
     
     def get_queryset(self):
-        """Get only upcoming appointments"""
-        return Appointment.objects.filter(
+        """Get only upcoming appointments with related data and filtering"""
+        queryset = Appointment.objects.filter(
             patient=self.request.user.patient_profile,
             status__in=['SCHEDULED', 'CHECKED_IN'],
             appointment_date__gte=timezone.now().date()
-        ).order_by('appointment_date', 'start_time')
+        ).select_related('doctor__user', 'patient__user')
+        
+        # Apply filters
+        self.form = AppointmentFilterForm(self.request.GET)
+        if self.form.is_valid():
+            if self.form.cleaned_data.get('doctor'):
+                queryset = queryset.filter(doctor=self.form.cleaned_data['doctor'])
+            if self.form.cleaned_data.get('date_from'):
+                queryset = queryset.filter(appointment_date__gte=self.form.cleaned_data['date_from'])
+            if self.form.cleaned_data.get('date_to'):
+                queryset = queryset.filter(appointment_date__lte=self.form.cleaned_data['date_to'])
+                
+        return queryset.order_by('appointment_date', 'start_time')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['filter_form'] = self.form
+        
+        # Filter past appointments as well if needed, currently just showing last 10
         context['past_appointments'] = Appointment.objects.filter(
             patient=self.request.user.patient_profile,
             status__in=['COMPLETED', 'CANCELLED', 'NO_SHOW']
+        ).select_related(
+            'doctor__user'  # Prevent N+1 queries
         ).order_by('-appointment_date', '-start_time')[:10]
         return context
     

@@ -9,6 +9,13 @@ from .appointment_creators import ScheduledAppointmentCreator, WalkInAppointment
 from .config import SingletonConfig
 from doctors.models import Doctor
 from patients.models import Patient
+from .exceptions import (
+    AppointmentError, 
+    SlotUnavailableError, 
+    DoctorUnavailableError,
+    MaxAppointmentsError,
+    InvalidAppointmentError
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,23 +46,41 @@ class AppointmentService:
             logger.error(f"Error getting available slots for doctor {doctor_id}: {e}")
             return []
     
-    @staticmethod
+    @classmethod
     @transaction.atomic
-    def book_appointment(patient, doctor, appointment_date, start_time, notes='', is_walk_in=False):
+    def book_appointment(cls, patient, doctor, appointment_date, start_time, notes='', is_walk_in=False):
         """
         Book an appointment using Factory Method pattern.
-        Also creates a Queue for the doctor on that date (triggers QR code generation).
         """
-        from queues.models import Queue  # Import here to avoid circular imports
+        from queues.models import Queue
+        from django.conf import settings
         
         try:
-            # Select appropriate creator based on appointment type (Factory Method)
+            # Validate business rules
+            if appointment_date < timezone.now().date():
+                raise InvalidAppointmentError("Cannot book appointment in the past")
+            
+            # Check slot availability
+            if not cls._is_slot_available(doctor, appointment_date, start_time):
+                raise SlotUnavailableError(
+                    f"Time slot {start_time} is not available on {appointment_date}"
+                )
+            
+            # Check doctor availability (if strictly enforcing schedule)
+            # This logic depends on business requirements - assume we check availability
+            
+            # Check max appointments
+            if cls._is_max_appointments_reached(doctor, appointment_date):
+                raise MaxAppointmentsError(
+                    f"Doctor has reached maximum appointments for {appointment_date}"
+                )
+                
+            # Select appropriate creator
             if is_walk_in:
                 creator = WalkInAppointmentCreator()
             else:
                 creator = ScheduledAppointmentCreator()
             
-            # Use factory method to create appointment
             try:
                 appointment = creator.create_product(
                     patient=patient,
@@ -66,19 +91,53 @@ class AppointmentService:
                 )
                 appointment.save()
             except ValueError as e:
-                return False, str(e)
+                raise InvalidAppointmentError(str(e))
             
-            # Create Queue for this doctor/date if it doesn't exist (triggers QR code generation)
+            # Create Queue entry
             Queue.objects.get_or_create(doctor=doctor, date=appointment_date)
+            
+            logger.info(
+                f"Appointment booked successfully: {appointment.pk} "
+                f"for patient {patient.pk} with doctor {doctor.pk}"
+            )
             
             return True, appointment
             
-        except ValidationError as e:
-            logger.warning(f"Validation error booking appointment: {e}")
+        except AppointmentError as e:
+            logger.info(f"Business rule violation: {e}")
             return False, str(e)
+            
+        except ValidationError as e:
+            logger.warning(f"Model validation failed: {e}")
+            return False, str(e)
+            
         except Exception as e:
-            logger.error(f"Unexpected error booking appointment: {e}", exc_info=True)
-            return False, f'Booking failed: {str(e)}'
+            logger.exception(f"Unexpected error booking appointment: {e}")
+            return False, "An unexpected error occurred. Please try again."
+
+    @staticmethod
+    def _is_slot_available(doctor, date, time):
+        """Check if time slot is available"""
+        return not Appointment.objects.filter(
+            doctor=doctor,
+            appointment_date=date,
+            start_time=time,
+            status__in=['SCHEDULED', 'CHECKED_IN']
+        ).exists()
+    
+    @staticmethod
+    def _is_max_appointments_reached(doctor, date):
+        """Check if doctor reached max appointments"""
+        from django.conf import settings
+        max_appointments = getattr(settings, 'MAX_APPOINTMENTS_PER_DAY', 15)
+        
+        count = Appointment.objects.filter(
+            doctor=doctor,
+            appointment_date=date,
+            status__in=['SCHEDULED', 'CHECKED_IN']
+        ).count()
+        
+        return count >= max_appointments
     
     @staticmethod
     def cancel_appointment(appointment_id, patient):
