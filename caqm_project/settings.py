@@ -66,10 +66,11 @@ else:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
 
-# Tell Django to trust the X-Forwarded-Proto header from Replit's proxy
-# Only enable when running behind a trusted proxy (Replit)
-if os.environ.get('REPL_ID') or os.environ.get('REPLIT_DEPLOYMENT'):
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Tell Django to trust proxy headers from Replit's HTTPS proxy
+# This fixes "accessing dev server over HTTPS" error
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 CSRF_TRUSTED_ORIGINS = [
     "https://*.replit.dev",
