@@ -1,0 +1,490 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Admin Dashboard - CAQM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-radius: 12px;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    .doctor-card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .doctor-card .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .queue-badge {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
+    .progress-thin {
+        height: 6px;
+        border-radius: 3px;
+    }
+    .table-stats th {
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .nav-pills .nav-link.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .django-admin-btn {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+    }
+    .django-admin-btn:hover {
+        background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="fas fa-tachometer-alt"></i> Admin Dashboard</h2>
+        <p class="text-muted">Queue Management Overview | {{ today|date:"F d, Y" }}</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'admin:index' %}" class="btn btn-dark django-admin-btn me-2">
+            <i class="fas fa-cog"></i> Django Admin Panel
+        </a>
+        <a href="{% url 'admins:admin_register_user' %}" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Add User
+        </a>
+    </div>
+</div>
+
+<!-- Overview Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="stat-number text-primary">{{ overview.total_doctors }}</div>
+                <p class="text-muted mb-0"><i class="fas fa-user-md"></i> Doctors</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="stat-number text-success">{{ overview.total_patients }}</div>
+                <p class="text-muted mb-0"><i class="fas fa-users"></i> Patients</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="stat-number text-info">{{ overview.total_nurses }}</div>
+                <p class="text-muted mb-0"><i class="fas fa-user-nurse"></i> Nurses</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="stat-number text-warning">{{ overview.today_appointments }}</div>
+                <p class="text-muted mb-0"><i class="fas fa-calendar-day"></i> Today's Appts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="stat-number text-danger">{{ overview.active_queues }}</div>
+                <p class="text-muted mb-0"><i class="fas fa-list-ol"></i> Active Queues</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="stat-number text-secondary">{{ overview.total_users }}</div>
+                <p class="text-muted mb-0"><i class="fas fa-user-circle"></i> Total Users</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Today's Queue Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col">
+                        <h4 class="mb-0 text-warning">{{ today_summary.waiting }}</h4>
+                        <small class="text-muted">Waiting</small>
+                    </div>
+                    <div class="col">
+                        <h4 class="mb-0 text-primary">{{ today_summary.in_progress }}</h4>
+                        <small class="text-muted">In Progress</small>
+                    </div>
+                    <div class="col">
+                        <h4 class="mb-0 text-success">{{ today_summary.completed }}</h4>
+                        <small class="text-muted">Completed</small>
+                    </div>
+                    <div class="col">
+                        <h4 class="mb-0 text-danger">{{ today_summary.no_shows }}</h4>
+                        <small class="text-muted">No Shows</small>
+                    </div>
+                    <div class="col">
+                        <h4 class="mb-0 text-info">{{ today_summary.emergency }}</h4>
+                        <small class="text-muted">Emergency</small>
+                    </div>
+                    <div class="col">
+                        <h4 class="mb-0 text-secondary">{{ today_summary.total_in_queues }}</h4>
+                        <small class="text-muted">Total in Queues</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Date Filter -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label"><i class="fas fa-calendar"></i> From Date</label>
+                        <input type="date" name="date_from" class="form-control" value="{{ date_from|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><i class="fas fa-calendar"></i> To Date</label>
+                        <input type="date" name="date_to" class="form-control" value="{{ date_to|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter"></i> Apply Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Doctor Queue Statistics -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <ul class="nav nav-pills" id="queueTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="all-tab" data-bs-toggle="pill" data-bs-target="#all-doctors" type="button">
+                            <i class="fas fa-th-list"></i> All Doctors
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="past-tab" data-bs-toggle="pill" data-bs-target="#past-queues" type="button">
+                            <i class="fas fa-history"></i> Past Queues
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="today-tab" data-bs-toggle="pill" data-bs-target="#today-queues" type="button">
+                            <i class="fas fa-clock"></i> Today
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="future-tab" data-bs-toggle="pill" data-bs-target="#future-queues" type="button">
+                            <i class="fas fa-calendar-alt"></i> Upcoming
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="queueTabsContent">
+                    <!-- All Doctors Tab -->
+                    <div class="tab-pane fade show active" id="all-doctors" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-stats align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Doctor</th>
+                                        <th>Specialization</th>
+                                        <th class="text-center">Past (30 days)</th>
+                                        <th class="text-center">Today</th>
+                                        <th class="text-center">Upcoming</th>
+                                        <th class="text-center">Completion Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in doctor_stats %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ stat.doctor_name }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ stat.specialization }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-success queue-badge">{{ stat.past.completed }} completed</span>
+                                            <span class="badge bg-danger queue-badge">{{ stat.past.no_shows }} no-shows</span>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if stat.today.has_queue %}
+                                            <span class="badge bg-warning text-dark queue-badge">{{ stat.today.waiting }} waiting</span>
+                                            <span class="badge bg-primary queue-badge">{{ stat.today.in_progress }} in progress</span>
+                                            {% else %}
+                                            <span class="badge bg-light text-muted">No queue</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info queue-badge">{{ stat.future.scheduled_appointments }} scheduled</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <div class="progress progress-thin flex-grow-1 me-2" style="max-width: 100px;">
+                                                    <div class="progress-bar bg-success" style="width: {{ stat.past.completion_rate }}%"></div>
+                                                </div>
+                                                <span class="small">{{ stat.past.completion_rate }}%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            <i class="fas fa-user-md fa-2x mb-2"></i>
+                                            <p>No doctors registered yet.</p>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Past Queues Tab -->
+                    <div class="tab-pane fade" id="past-queues" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-stats align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Doctor</th>
+                                        <th class="text-center">Queue Days</th>
+                                        <th class="text-center">Total Booked</th>
+                                        <th class="text-center">Completed</th>
+                                        <th class="text-center">No Shows</th>
+                                        <th class="text-center">Completion Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in doctor_stats %}
+                                    <tr>
+                                        <td><strong>{{ stat.doctor_name }}</strong></td>
+                                        <td class="text-center">{{ stat.past.queue_days }}</td>
+                                        <td class="text-center"><span class="badge bg-primary">{{ stat.past.total_booked }}</span></td>
+                                        <td class="text-center"><span class="badge bg-success">{{ stat.past.completed }}</span></td>
+                                        <td class="text-center"><span class="badge bg-danger">{{ stat.past.no_shows }}</span></td>
+                                        <td class="text-center">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <div class="progress progress-thin flex-grow-1 me-2" style="max-width: 100px;">
+                                                    <div class="progress-bar bg-success" style="width: {{ stat.past.completion_rate }}%"></div>
+                                                </div>
+                                                <span>{{ stat.past.completion_rate }}%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Today Tab -->
+                    <div class="tab-pane fade" id="today-queues" role="tabpanel">
+                        <div class="row">
+                            {% for stat in doctor_stats %}
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card doctor-card h-100 shadow-sm">
+                                    <div class="card-header text-white">
+                                        <h6 class="mb-0">{{ stat.doctor_name }}</h6>
+                                        <small>{{ stat.specialization }}</small>
+                                    </div>
+                                    <div class="card-body">
+                                        {% if stat.today.has_queue %}
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <h4 class="text-warning mb-0">{{ stat.today.waiting }}</h4>
+                                                <small class="text-muted">Waiting</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <h4 class="text-primary mb-0">{{ stat.today.in_progress }}</h4>
+                                                <small class="text-muted">In Progress</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <h4 class="text-success mb-0">{{ stat.today.completed }}</h4>
+                                                <small class="text-muted">Done</small>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between small">
+                                            <span><i class="fas fa-exclamation-triangle text-danger"></i> {{ stat.today.no_shows }} No Shows</span>
+                                            <span><i class="fas fa-ambulance text-info"></i> {{ stat.today.emergency }} Emergency</span>
+                                        </div>
+                                        {% else %}
+                                        <div class="text-center text-muted py-3">
+                                            <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                                            <p class="mb-0">No queue today</p>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12 text-center text-muted py-4">
+                                <i class="fas fa-user-md fa-2x mb-2"></i>
+                                <p>No doctors registered.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Future Tab -->
+                    <div class="tab-pane fade" id="future-queues" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-stats align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Doctor</th>
+                                        <th>Specialization</th>
+                                        <th class="text-center">Next 7 Days</th>
+                                        <th class="text-center">Total Scheduled</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in doctor_stats %}
+                                    <tr>
+                                        <td><strong>{{ stat.doctor_name }}</strong></td>
+                                        <td><span class="badge bg-secondary">{{ stat.specialization }}</span></td>
+                                        <td class="text-center">
+                                            <span class="badge bg-warning text-dark queue-badge">{{ stat.future.next_7_days }} appointments</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info queue-badge">{{ stat.future.scheduled_appointments }} total</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-stream"></i> Recent Queue Activity</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_activity %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Patient</th>
+                                <th>Doctor</th>
+                                <th>Position</th>
+                                <th>Status</th>
+                                <th>Check-in Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in recent_activity %}
+                            <tr>
+                                <td>{{ entry.patient.user.get_full_name }}</td>
+                                <td>Dr. {{ entry.queue.doctor.user.get_full_name }}</td>
+                                <td>#{{ entry.position }}</td>
+                                <td>
+                                    {% if entry.status == 'WAITING' %}
+                                    <span class="badge bg-warning text-dark">Waiting</span>
+                                    {% elif entry.status == 'IN_PROGRESS' %}
+                                    <span class="badge bg-primary">In Progress</span>
+                                    {% elif entry.status == 'TERMINATED' %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% elif entry.status == 'NO_SHOW' %}
+                                    <span class="badge bg-danger">No Show</span>
+                                    {% elif entry.status == 'EMERGENCY' %}
+                                    <span class="badge bg-info">Emergency</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ entry.check_in_time|time:"h:i A" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                    No recent queue activity.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Links -->
+<div class="row">
+    <div class="col-md-4">
+        <a href="{% url 'admins:admin_user_list' %}" class="card border-0 shadow-sm text-decoration-none mb-3">
+            <div class="card-body text-center py-4">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h6 class="mb-0">Manage Users</h6>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'admins:admin_register_user' %}" class="card border-0 shadow-sm text-decoration-none mb-3">
+            <div class="card-body text-center py-4">
+                <i class="fas fa-user-plus fa-2x text-success mb-2"></i>
+                <h6 class="mb-0">Register New User</h6>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'admin:index' %}" class="card border-0 shadow-sm text-decoration-none mb-3">
+            <div class="card-body text-center py-4">
+                <i class="fas fa-cog fa-2x text-dark mb-2"></i>
+                <h6 class="mb-0">Django Admin</h6>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}

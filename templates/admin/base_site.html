@@ -1,0 +1,32 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | CAQM Admin{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+    <a href="{% url 'admin:index' %}">CAQM Administration</a>
+</div>
+{% endblock %}
+
+{% block nav-global %}
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 8px 15px; text-align: center;">
+    <a href="{% url 'admins:admin_dashboard' %}" style="color: white; text-decoration: none; font-weight: 600; font-size: 14px;">
+        <i class="fas fa-arrow-left" style="margin-right: 5px;"></i> Back to Admin Dashboard
+    </a>
+</div>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    #site-name a {
+        color: #667eea;
+        font-weight: 700;
+    }
+    #site-name a:hover {
+        color: #764ba2;
+    }
+</style>
+{% endblock %}

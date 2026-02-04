@@ -170,6 +170,8 @@ class CustomLoginView(LoginView):
             return reverse_lazy('patients:home')
         elif user.is_nurse():
             return reverse_lazy('nurses:nurse_dashboard')
+        elif user.is_admin():
+            return reverse_lazy('admins:admin_dashboard')
         else:
             return reverse_lazy('admin:index')
     

@@ -1,11 +1,12 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import CreateView, ListView, View
+from django.views.generic import CreateView, ListView, View, TemplateView
 from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.urls import reverse_lazy
-from .services import AdminService
+from django.utils import timezone
+from .services import AdminService, AdminDashboardService
 from accounts.models import User
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class AdminRequiredMixin(UserPassesTestMixin):
@@ -106,3 +107,40 @@ class AdminDeleteUserView(LoginRequiredMixin, AdminRequiredMixin, View):
             messages.error(request, f'Error deleting user: {str(e)}')
         
         return redirect('admins:admin_user_list')
+
+
+class AdminDashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+    """
+    Admin dashboard with comprehensive queue statistics for all doctors.
+    Shows past, present, and future queue status.
+    """
+    template_name = 'admins/admin_dashboard.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get date range from query params
+        date_from_str = self.request.GET.get('date_from')
+        date_to_str = self.request.GET.get('date_to')
+        
+        today = timezone.now().date()
+        
+        try:
+            date_from = datetime.strptime(date_from_str, '%Y-%m-%d').date() if date_from_str else today - timedelta(days=30)
+            date_to = datetime.strptime(date_to_str, '%Y-%m-%d').date() if date_to_str else today + timedelta(days=30)
+        except ValueError:
+            date_from = today - timedelta(days=30)
+            date_to = today + timedelta(days=30)
+        
+        # Get all statistics
+        context['overview'] = AdminDashboardService.get_overview_stats()
+        context['doctor_stats'] = AdminDashboardService.get_doctor_queue_stats(date_from, date_to)
+        context['today_summary'] = AdminDashboardService.get_today_summary()
+        context['recent_activity'] = AdminDashboardService.get_recent_activity(limit=10)
+        
+        # Date filters
+        context['date_from'] = date_from
+        context['date_to'] = date_to
+        context['today'] = today
+        
+        return context
