@@ -35,7 +35,24 @@ python manage.py runserver 0.0.0.0:5000
 - Nurses - Manage patient queues
 - Admins - Manage all users
 
+## Admin Dashboard
+The admin dashboard (`/admins/`) provides comprehensive queue management:
+- **Overview stats**: Doctors, patients, nurses, appointments, queues counts
+- **Today's summary**: Waiting, in-progress, completed, emergency queue counts
+- **Doctor statistics**: Tabbed view for All Doctors / Past / Today / Future queues
+- **Date filtering**: Filter statistics by date range
+- **Navigation**: Bidirectional links between custom dashboard and Django admin
+
+### Test Admin Account
+- Email: admin@clinic.com
+- Password: admin123456
+
 ## Recent Changes
+- February 04, 2026: Added professional admin dashboard
+  - Created AdminDashboardService for queue statistics aggregation
+  - Built Bootstrap 5 admin dashboard with tabbed interface
+  - Added bidirectional navigation between dashboard and Django admin
+  - Updated login redirect for admin users
 - January 13, 2026: Configured for Replit environment
   - Added CSRF_TRUSTED_ORIGINS for Replit domains
   - Removed mysqlclient dependency (using SQLite)
