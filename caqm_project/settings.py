@@ -42,10 +42,9 @@ if not SECRET_KEY:
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 # SECURITY: Properly configure allowed hosts
-ALLOWED_HOSTS = os.environ.get(
-    'ALLOWED_HOSTS',
-    '*'
-).split(',')
+# Default allows Replit domains for development
+_default_hosts = 'localhost,127.0.0.1,.replit.dev,.replit.app,.repl.co'
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', _default_hosts).split(',')
 
 # Production security settings
 if not DEBUG:  
@@ -66,6 +65,11 @@ else:
     SECURE_HSTS_SECONDS = 0
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
+
+# Tell Django to trust the X-Forwarded-Proto header from Replit's proxy
+# Only enable when running behind a trusted proxy (Replit)
+if os.environ.get('REPL_ID') or os.environ.get('REPLIT_DEPLOYMENT'):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 CSRF_TRUSTED_ORIGINS = [
     "https://*.replit.dev",
