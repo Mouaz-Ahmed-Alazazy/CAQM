@@ -13,15 +13,15 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(BASE_DIR / '.env')
 except ImportError:
     pass  # python-dotenv not installed, use system env vars
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -38,8 +38,8 @@ if not SECRET_KEY:
         RuntimeWarning
     )
 
-# SECURITY: DEBUG mode from environment
-DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
+# SECURITY: DEBUG mode from environment (defaults to True for safety during development)
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 # SECURITY: Properly configure allowed hosts
 ALLOWED_HOSTS = os.environ.get(
@@ -48,7 +48,7 @@ ALLOWED_HOSTS = os.environ.get(
 ).split(',')
 
 # Production security settings
-if not DEBUG:
+if not DEBUG:  
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -58,6 +58,14 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+else:
+    # Explicitly disable these for local development to prevent HSTS/HTTPS loops
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
 
 CSRF_TRUSTED_ORIGINS = [
     "https://*.replit.dev",
