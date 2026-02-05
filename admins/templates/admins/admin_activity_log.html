@@ -1,0 +1,145 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Activity Log - CAQM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-stream"></i> Recent Queue Activity</h2>
+            <p class="text-muted">Track patient queue check-ins and status updates</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'admins:admin_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Activity Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Activity History</h5>
+                </div>
+                <div class="card-body">
+                    {% if activities %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Position</th>
+                                    <th>Status</th>
+                                    <th>Check-in Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in activities %}
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-user-circle text-muted me-2"></i>
+                                        {{ entry.patient.user.get_full_name }}
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-user-md text-primary me-2"></i>
+                                        Dr. {{ entry.queue.doctor.user.get_full_name }}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">#{{ entry.position }}</span>
+                                    </td>
+                                    <td>
+                                        {% if entry.status == 'WAITING' %}
+                                        <span class="badge bg-warning text-dark">Waiting</span>
+                                        {% elif entry.status == 'IN_PROGRESS' %}
+                                        <span class="badge bg-primary">In Progress</span>
+                                        {% elif entry.status == 'TERMINATED' %}
+                                        <span class="badge bg-success">Completed</span>
+                                        {% elif entry.status == 'NO_SHOW' %}
+                                        <span class="badge bg-danger">No Show</span>
+                                        {% elif entry.status == 'EMERGENCY' %}
+                                        <span class="badge bg-info">Emergency</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-clock text-muted me-2"></i>
+                                        {{ entry.check_in_time|date:"Y-m-d" }} {{ entry.check_in_time|time:"h:i A" }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if is_paginated %}
+                    <nav aria-label="Activity pagination">
+                        <ul class="pagination justify-content-center mt-4">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}"
+                                    aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;&laquo;</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;</span>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %} <li
+                                class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                                {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}"
+                                        aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">&raquo;</span>
+                                </li>
+                                <li class="page-item disabled">
+                                    <span class="page-link">&raquo;&raquo;</span>
+                                </li>
+                                {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <h5>No Activity Found</h5>
+                        <p>There are no queue activities to display yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
