@@ -19,9 +19,10 @@
                     <div class="col-md-4">
                         <select name="role" class="form-select" onchange="this.form.submit()">
                             <option value="">All Roles</option>
-                            <option value="PATIENT" {% if role_filter=='PATIENT' %}selected{% endif %}>Patients</option>
-                            <option value="DOCTOR" {% if role_filter=='DOCTOR' %}selected{% endif %}>Doctors</option>
-                            <option value="ADMIN" {% if role_filter=='ADMIN' %}selected{% endif %}>Admins</option>
+                            <option value="PATIENT" {% if role_filter == 'PATIENT' %}selected{% endif %}>Patients</option>
+                            <option value="DOCTOR" {% if role_filter == 'DOCTOR' %}selected{% endif %}>Doctors</option>
+                            <option value="ADMIN" {% if role_filter == 'ADMIN' %}selected{% endif %}>Admins</option>
+                            <option value="NURSE" {% if role_filter == 'NURSE' %}selected{% endif %}>Nurses</option>
                         </select>
                     </div>
                 </div>
@@ -58,8 +59,7 @@
                                     style="display: inline;"
                                     onsubmit="return confirm('Are you sure you want to delete {{ user.get_full_name }}?');">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-danger" {% if user.id==request.user.id
-                                        %}disabled{% endif %}>
+                                    <button type="submit" class="btn btn-sm btn-danger" {% if user.id == request.user.id %}disabled{% endif %}>
                                         <i class="bi bi-trash"></i> Delete
                                     </button>
                                 </form>
