@@ -1,10 +1,12 @@
 from django.http import JsonResponse
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
 from doctors.models import Doctor
+from .views import AdminRequiredMixin
 
 
-class DoctorListAPIView(View):
-    """Simple API view to fetch doctors list for nurse assignment"""
+class DoctorListAPIView(LoginRequiredMixin, AdminRequiredMixin, View):
+    """API view to fetch doctors list for nurse assignment (admin only)"""
     
     def get(self, request):
         doctors = Doctor.objects.select_related('user').all()

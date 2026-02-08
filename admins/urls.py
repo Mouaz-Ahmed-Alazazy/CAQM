@@ -13,7 +13,6 @@ app_name = 'admins'
 
 urlpatterns = [
     path('', AdminDashboardView.as_view(), name='admin_dashboard'),
-    path('dashboard/', AdminDashboardView.as_view(), name='dashboard'),
     path('queue-stats/', AdminQueueStatsView.as_view(), name='admin_queue_stats'),
     path('activity-log/', AdminActivityLogView.as_view(), name='admin_activity_log'),
     path('register-user/', AdminUserRegistrationView.as_view(), name='admin_register_user'),

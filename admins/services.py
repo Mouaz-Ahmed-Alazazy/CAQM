@@ -29,24 +29,22 @@ class AdminService:
         Register a new user (Patient, Doctor, or Admin).
         """
         try:
-            # Validate password
             validate_password(password)
             
-            # Create user
             user = User.objects.create_user(
                 email=email,
                 password=password,
                 first_name=first_name,
                 last_name=last_name,
                 phone=phone,
-                role=role
+                role=role,
+                date_of_birth=kwargs.get('date_of_birth'),
+                gender=kwargs.get('gender', 'MALE'),
             )
             
-            # Create role-specific profile
             if role == 'PATIENT':
                 Patient.objects.create(
                     user=user,
-                    date_of_birth=kwargs.get('date_of_birth'),
                     address=kwargs.get('address', ''),
                     emergency_contact=kwargs.get('emergency_contact', '')
                 )
@@ -55,7 +53,6 @@ class AdminService:
                     user=user,
                     specialization=kwargs.get('specialization'),
                     license_number=kwargs.get('license_number', ''),
-                    years_of_experience=kwargs.get('years_of_experience', 0)
                 )
             elif role == 'NURSE':
                 Nurse.objects.create(
@@ -256,10 +253,10 @@ class AdminDashboardService:
         }
     
     @staticmethod
-    def get_recent_activity(limit=10):
+    def get_recent_activity(limit=None):
         """Get recent queue activity across all doctors."""
-        recent = PatientQueue.objects.select_related(
+        queryset = PatientQueue.objects.select_related(
             'patient__user', 'queue__doctor__user'
-        ).order_by('-id')[:limit]
+        ).order_by('-id')
         
-        return recent
+        return queryset

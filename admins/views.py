@@ -38,23 +38,31 @@ class AdminUserRegistrationView(LoginRequiredMixin, AdminRequiredMixin, View):
             phone = request.POST.get('phone')
             role = request.POST.get('role')
             
-            # Validate required fields
             if not all([email, password, first_name, last_name, phone, role]):
                 messages.error(request, 'All fields are required')
                 return render(request, self.template_name)
             
-            # Role-specific data
             kwargs = {}
-            if role == 'PATIENT':
-                dob_str = request.POST.get('date_of_birth')
-                if dob_str:
+            
+            dob_str = request.POST.get('date_of_birth')
+            if dob_str:
+                try:
                     kwargs['date_of_birth'] = datetime.strptime(dob_str, '%Y-%m-%d').date()
+                except ValueError:
+                    messages.error(request, 'Invalid date of birth format')
+                    return render(request, self.template_name)
+            else:
+                messages.error(request, 'Date of birth is required')
+                return render(request, self.template_name)
+            
+            kwargs['gender'] = request.POST.get('gender', 'MALE')
+            
+            if role == 'PATIENT':
                 kwargs['address'] = request.POST.get('address', '')
                 kwargs['emergency_contact'] = request.POST.get('emergency_contact', '')
             elif role == 'DOCTOR':
                 kwargs['specialization'] = request.POST.get('specialization')
                 kwargs['license_number'] = request.POST.get('license_number', '')
-                kwargs['years_of_experience'] = int(request.POST.get('years_of_experience', 0))
             elif role == 'NURSE':
                 assigned_doctor_id = request.POST.get('assigned_doctor')
                 if assigned_doctor_id:
@@ -104,6 +112,10 @@ class AdminDeleteUserView(LoginRequiredMixin, AdminRequiredMixin, View):
     
     def post(self, request, user_id):
         try:
+            if user_id == request.user.id:
+                messages.error(request, 'You cannot delete your own account')
+                return redirect('admins:admin_user_list')
+            
             success, message = AdminService.delete_user(user_id)
             
             if success:
@@ -179,4 +191,4 @@ class AdminActivityLogView(LoginRequiredMixin, AdminRequiredMixin, ListView):
     paginate_by = 20
     
     def get_queryset(self):
-        return AdminDashboardService.get_recent_activity(limit=100)
+        return AdminDashboardService.get_recent_activity()
