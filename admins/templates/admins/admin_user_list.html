@@ -53,7 +53,7 @@
                                     {{ user.get_role_display }}
                                 </span>
                             </td>
-                            <td>{{ user.date_joined|date:'Y-m-d' }}</td>
+                            <td>{{ user.created_at|date:'Y-m-d' }}</td>
                             <td>
                                 <form method="post" action="{% url 'admins:admin_delete_user' user.id %}"
                                     style="display: inline;"

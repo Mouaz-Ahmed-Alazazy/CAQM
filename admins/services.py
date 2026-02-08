@@ -83,7 +83,7 @@ class AdminService:
         Get all users, optionally filtered by role.
         """
         try:
-            queryset = User.objects.all().order_by('-date_joined')
+            queryset = User.objects.all().order_by('-created_at')
             
             if role:
                 queryset = queryset.filter(role=role)
@@ -123,9 +123,10 @@ class AdminDashboardService:
         """Get high-level overview statistics."""
         today = timezone.now().date()
         return {
-            'total_doctors': Doctor.objects.count(),
-            'total_patients': Patient.objects.count(),
-            'total_nurses': Nurse.objects.count(),
+            'total_doctors': User.objects.filter(role='DOCTOR').count(),
+            'total_patients': User.objects.filter(role='PATIENT').count(),
+            'total_nurses': User.objects.filter(role='NURSE').count(),
+            'total_admins': User.objects.filter(role='ADMIN').count(),
             'today_appointments': Appointment.objects.filter(appointment_date=today).count(),
             'active_queues': Queue.objects.filter(date=today).count(),
             'total_users': User.objects.count(),
