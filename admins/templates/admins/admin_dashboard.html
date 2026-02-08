@@ -61,8 +61,19 @@
         </div>
     </div>
 
-    <!-- Overview Stats Cards -->
+    <!-- Registered Users Section -->
     <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-3"><i class="fas fa-users"></i> Registered Users</h5>
+        </div>
+        <div class="col-md-2">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="stat-number text-secondary">{{ overview.total_users }}</div>
+                    <p class="text-muted mb-0"><i class="fas fa-user-circle"></i> Total Users</p>
+                </div>
+            </div>
+        </div>
         <div class="col-md-2">
             <div class="card stat-card border-0 shadow-sm h-100">
                 <div class="card-body text-center">
@@ -75,7 +86,7 @@
             <div class="card stat-card border-0 shadow-sm h-100">
                 <div class="card-body text-center">
                     <div class="stat-number text-success">{{ overview.total_patients }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-users"></i> Patients</p>
+                    <p class="text-muted mb-0"><i class="fas fa-procedures"></i> Patients</p>
                 </div>
             </div>
         </div>
@@ -90,12 +101,27 @@
         <div class="col-md-2">
             <div class="card stat-card border-0 shadow-sm h-100">
                 <div class="card-body text-center">
-                    <div class="stat-number text-warning">{{ overview.today_appointments }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-calendar-day"></i> Today's Appts</p>
+                    <div class="stat-number text-danger">{{ overview.total_admins }}</div>
+                    <p class="text-muted mb-0"><i class="fas fa-user-shield"></i> Admins</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-2">
+    </div>
+
+    <!-- Queue & Appointment Stats Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-3"><i class="fas fa-clipboard-list"></i> Queues & Appointments</h5>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="stat-number text-warning">{{ overview.today_appointments }}</div>
+                    <p class="text-muted mb-0"><i class="fas fa-calendar-day"></i> Today's Appointments</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
             <div class="card stat-card border-0 shadow-sm h-100">
                 <div class="card-body text-center">
                     <div class="stat-number text-danger">{{ overview.active_queues }}</div>
@@ -103,23 +129,23 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-4">
             <div class="card stat-card border-0 shadow-sm h-100">
                 <div class="card-body text-center">
-                    <div class="stat-number text-secondary">{{ overview.total_users }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-user-circle"></i> Total Users</p>
+                    <div class="stat-number text-secondary">{{ today_summary.total_in_queues }}</div>
+                    <p class="text-muted mb-0"><i class="fas fa-users-cog"></i> Total in Queues Today</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Today's Summary -->
+    <!-- Today's Queue Summary -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-gradient text-white"
                     style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Today's Queue Summary</h5>
+                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Today's Queue Breakdown</h5>
                 </div>
                 <div class="card-body">
                     <div class="row text-center">
@@ -142,10 +168,6 @@
                         <div class="col">
                             <h4 class="mb-0 text-info">{{ today_summary.emergency }}</h4>
                             <small class="text-muted">Emergency</small>
-                        </div>
-                        <div class="col">
-                            <h4 class="mb-0 text-secondary">{{ today_summary.total_in_queues }}</h4>
-                            <small class="text-muted">Total in Queues</small>
                         </div>
                     </div>
                 </div>
