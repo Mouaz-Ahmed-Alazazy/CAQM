@@ -59,7 +59,7 @@
                                     style="display: inline;"
                                     onsubmit="return confirm('Are you sure you want to delete {{ user.get_full_name }}?');">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-danger" {% if user.id == pip request.user.id %}disabled{% endif %}>
+                                    <button type="submit" class="btn btn-sm btn-danger" {% if user.id == request.user.id %}disabled{% endif %}>
                                         <i class="bi bi-trash"></i> Delete
                                     </button>
                                 </form>

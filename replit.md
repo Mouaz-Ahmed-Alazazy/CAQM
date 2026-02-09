@@ -44,6 +44,9 @@ python manage.py runserver 0.0.0.0:5000
 - Custom adapters in `accounts/adapters.py` handle social login flow
 - Credentials stored as secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 - Callback URL: `https://<domain>/accounts/google/login/callback/`
+- Google SocialApp is auto-configured via `post_migrate` signal in `accounts/apps.py`
+- Management command available: `python manage.py setup_google_oauth`
+- Credentials stored in DB SocialApp (not inline in settings) to avoid MultipleObjectsReturned error
 
 ## Admin Dashboard
 The admin dashboard (`/admins/`) provides comprehensive queue management:
@@ -58,13 +61,16 @@ The admin dashboard (`/admins/`) provides comprehensive queue management:
 - Password: admin123456
 
 ## Recent Changes
-- February 09, 2026: Google OAuth authentication
+- February 09, 2026: Google OAuth authentication & bug fixes
   - Integrated django-allauth for Google login/signup
+  - Fixed MultipleObjectsReturned error: moved Google credentials from inline settings to DB SocialApp
+  - Added auto-setup via post_migrate signal and management command `setup_google_oauth`
   - Fixed adapter bugs (populate_user crash, wrong adapter paths, settings typos)
   - Made date_of_birth/gender nullable for OAuth compatibility
-  - Added profile completion redirect for Google sign-up users
+  - Added profile completion redirect for Google sign-up users (includes gender check)
   - Fixed admin dashboard user counts (now role-based, includes admins)
-  - Fixed user list page (was empty due to wrong order_by field)
+  - Fixed user list page template bug ('pip' typo in disabled button condition)
+  - Fixed missing appointments table in database
 - February 04, 2026: Added professional admin dashboard
   - Created AdminDashboardService for queue statistics aggregation
   - Built Bootstrap 5 admin dashboard with tabbed interface
