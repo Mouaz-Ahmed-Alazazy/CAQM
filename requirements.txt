@@ -7,7 +7,7 @@ coverage==7.12.0
 crispy-bootstrap5==2024.2
 diagrams==0.24.4
 distlib==0.4.0
-Django==5.0.14
+Django>=5.2
 django-crispy-forms==2.2
 django-ratelimit==4.1.0
 filelock==3.20.0
@@ -36,7 +36,7 @@ qrcode==8.2
 sqlparse==0.5.3
 tzdata==2025.2
 virtualenv==20.35.4
-django-allauth==65.14.1
+django-allauth>=65.14.1
 requests
 cryptography
 PyJWT
