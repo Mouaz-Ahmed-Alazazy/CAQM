@@ -213,10 +213,19 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = User
     form_class = ProfileUpdateForm
     template_name = 'accounts/profile_update.html'
-    success_url = reverse_lazy('patients:my_appointments')
     
     def get_object(self):
         return self.request.user
+    
+    def get_success_url(self):
+        user = self.request.user
+        if user.is_doctor():
+            return reverse_lazy('doctors:doctor_dashboard')
+        elif user.is_nurse():
+            return reverse_lazy('nurses:nurse_dashboard')
+        elif user.is_admin():
+            return reverse_lazy('admins:admin_dashboard')
+        return reverse_lazy('patients:home')
     
     def form_valid(self, form):
         messages.success(self.request, 'Profile updated successfully!')

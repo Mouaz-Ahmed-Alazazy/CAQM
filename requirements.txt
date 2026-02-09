@@ -17,7 +17,7 @@ iniconfig==2.3.0
 Jinja2==3.1.6
 MarkupSafe==3.0.3
 mypy_extensions==1.1.0
-mysqlclient==2.2.7
+
 nodeenv==1.9.1
 packaging==25.0
 pathspec==0.12.1
@@ -36,4 +36,7 @@ qrcode==8.2
 sqlparse==0.5.3
 tzdata==2025.2
 virtualenv==20.35.4
-django-googler==0.0.20
+django-allauth==65.14.1
+requests
+cryptography
+PyJWT

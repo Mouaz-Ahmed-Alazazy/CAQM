@@ -46,8 +46,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         message="Phone number must be in the format: '091xxxxxxx', '092xxxxxxx', '093xxxxxxx', or '094xxxxxxx' (10 digits total)."
     )
     phone = models.CharField(validators=[phone_regex], max_length=17, blank=True)
-    date_of_birth = models.DateField()
-    gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, default='')
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='PATIENT')
     
     is_active = models.BooleanField(default=True)

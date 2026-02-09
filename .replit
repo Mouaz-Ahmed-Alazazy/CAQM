@@ -4,7 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["awsebcli", "freefont_ttf", "freetype", "imagemagickBig", "inkscape", "lcms2", "libimagequant", "libjpeg", "libmysqlclient", "libtiff", "libwebp", "libxcrypt", "libyaml", "openjpeg", "pgadmin4", "round", "tcl", "tk", "which", "xdg-utils", "zlib"]
+packages = ["awsebcli", "cargo", "freefont_ttf", "freetype", "imagemagickBig", "inkscape", "lcms2", "libiconv", "libimagequant", "libjpeg", "libmysqlclient", "libtiff", "libwebp", "libxcrypt", "libyaml", "openjpeg", "openssl", "pgadmin4", "pkg-config", "round", "rustc", "tcl", "tk", "which", "xdg-utils", "zlib"]
 
 [workflows]
 runButton = "Project"
