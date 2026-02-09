@@ -1,0 +1,84 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Complete Your Profile - CAQM{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body p-5">
+                <h2 class="card-title text-center mb-4">
+                    <i class="fas fa-user-edit"></i> Complete Your Profile
+                </h2>
+                
+                <p class="text-muted text-center mb-4">
+                    Please complete your profile to continue using CAQM.
+                </p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">First Name *</label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                {% for error in form.first_name.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Last Name *</label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                {% for error in form.last_name.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Phone Number *</label>
+                        {{ form.phone }}
+                        <small class="form-text text-muted d-block">
+                            Format: 091xxxxxxx, 092xxxxxxx, 093xxxxxxx, or 094xxxxxxx
+                        </small>
+                        {% if form.phone.errors %}
+                            {% for error in form.phone.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date of Birth *</label>
+                            {{ form.date_of_birth }}
+                            {% if form.date_of_birth.errors %}
+                                {% for error in form.date_of_birth.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Gender *</label>
+                            {{ form.gender }}
+                            {% if form.gender.errors %}
+                                {% for error in form.gender.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-save"></i> Save Profile
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
