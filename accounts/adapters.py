@@ -49,8 +49,8 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
 
     def get_login_redirect_url(self, request):
         user = request.user
-        if user.is_authenticated and (not user.date_of_birth or not user.phone):
-            return '/accounts/profile/update'
+        if user.is_authenticated and (not user.date_of_birth or not user.phone or not user.gender):
+            return '/accounts/profile/update/'
         if user.is_authenticated and user.is_patient():
             return '/patients/'
         return '/patients/'
@@ -80,6 +80,6 @@ class CustomAccountAdapter(DefaultAccountAdapter):
                 return '/nurses/dashboard/'
             elif user.is_admin():
                 return '/admins/'
-            elif not user.date_of_birth or not user.phone:
-                return '/accounts/profile/update'
+            elif not user.date_of_birth or not user.phone or not user.gender:
+                return '/accounts/profile/update/'
         return '/patients/'

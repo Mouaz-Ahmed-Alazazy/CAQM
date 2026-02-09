@@ -35,9 +35,19 @@ python manage.py runserver 0.0.0.0:5000
 - Nurses - Manage patient queues
 - Admins - Manage all users
 
+## Google OAuth Authentication
+- **Library**: django-allauth 65.14.1
+- **Provider**: Google OAuth 2.0
+- Both login and patient registration support "Continue with Google"
+- Google sign-ups auto-create Patient role and profile
+- Users missing required fields (date_of_birth, phone, gender) are redirected to profile completion
+- Custom adapters in `accounts/adapters.py` handle social login flow
+- Credentials stored as secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- Callback URL: `https://<domain>/accounts/google/login/callback/`
+
 ## Admin Dashboard
 The admin dashboard (`/admins/`) provides comprehensive queue management:
-- **Overview stats**: Doctors, patients, nurses, appointments, queues counts
+- **Overview stats**: Total users, doctors, patients, nurses, admins, appointments, queues counts
 - **Today's summary**: Waiting, in-progress, completed, emergency queue counts
 - **Doctor statistics**: Tabbed view for All Doctors / Past / Today / Future queues
 - **Date filtering**: Filter statistics by date range
@@ -48,6 +58,13 @@ The admin dashboard (`/admins/`) provides comprehensive queue management:
 - Password: admin123456
 
 ## Recent Changes
+- February 09, 2026: Google OAuth authentication
+  - Integrated django-allauth for Google login/signup
+  - Fixed adapter bugs (populate_user crash, wrong adapter paths, settings typos)
+  - Made date_of_birth/gender nullable for OAuth compatibility
+  - Added profile completion redirect for Google sign-up users
+  - Fixed admin dashboard user counts (now role-based, includes admins)
+  - Fixed user list page (was empty due to wrong order_by field)
 - February 04, 2026: Added professional admin dashboard
   - Created AdminDashboardService for queue statistics aggregation
   - Built Bootstrap 5 admin dashboard with tabbed interface
