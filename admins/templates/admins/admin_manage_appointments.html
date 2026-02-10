@@ -1,0 +1,314 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Manage Appointments - CAQM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        border-radius: 12px;
+    }
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.35em 0.65em;
+    }
+    .cancel-btn {
+        font-size: 0.85rem;
+    }
+    .bulk-cancel-card {
+        border-left: 4px solid #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-calendar-alt"></i> Manage Appointments</h2>
+            <p class="text-muted">View, filter, and cancel appointments</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'admins:admin_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card filter-card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-filter"></i> Filter Appointments</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="doctor" class="form-label">Doctor</label>
+                            <select name="doctor" id="doctor" class="form-select">
+                                <option value="">All Doctors</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.pk }}" {% if selected_doctor == doctor.pk|stringformat:"d" %}selected{% endif %}>
+                                    Dr. {{ doctor.user.get_full_name }} - {{ doctor.get_specialization_display }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_from" class="form-label">From</label>
+                            <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_to" class="form-label">To</label>
+                            <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select name="status" id="status" class="form-select">
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i> Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card bulk-cancel-card border-0 shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-ban"></i> Cancel All Doctor Appointments</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'admins:admin_cancel_doctor_appointments' %}" id="bulkCancelForm">
+                        {% csrf_token %}
+                        <div class="mb-2">
+                            <label for="bulk_doctor" class="form-label">Doctor</label>
+                            <select name="doctor_id" id="bulk_doctor" class="form-select" required>
+                                <option value="">Select Doctor</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.pk }}">Dr. {{ doctor.user.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="bulk_date" class="form-label">Date (optional)</label>
+                            <input type="date" name="date" id="bulk_date" class="form-control">
+                            <small class="text-muted">Leave empty to cancel all future appointments</small>
+                        </div>
+                        <div class="mb-2">
+                            <label for="bulk_reason" class="form-label">Reason</label>
+                            <input type="text" name="reason" id="bulk_reason" class="form-control" placeholder="e.g., Doctor unavailable">
+                        </div>
+                        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#bulkCancelModal">
+                            <i class="fas fa-exclamation-triangle"></i> Cancel Appointments
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list"></i> Appointments ({{ page_obj.paginator.count }} total)</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if appointments %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Patient</th>
+                            <th>Doctor</th>
+                            <th>Specialization</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appointment in appointments %}
+                        <tr>
+                            <td>#{{ appointment.id }}</td>
+                            <td>
+                                <strong>{{ appointment.patient.user.get_full_name }}</strong>
+                                <br><small class="text-muted">{{ appointment.patient.user.email }}</small>
+                            </td>
+                            <td>Dr. {{ appointment.doctor.user.get_full_name }}</td>
+                            <td><span class="badge bg-info status-badge">{{ appointment.doctor.get_specialization_display }}</span></td>
+                            <td>{{ appointment.appointment_date|date:"M d, Y" }}</td>
+                            <td>{{ appointment.start_time|time:"h:i A" }}</td>
+                            <td>
+                                {% if appointment.status == 'SCHEDULED' %}
+                                <span class="badge bg-primary status-badge">Scheduled</span>
+                                {% elif appointment.status == 'CHECKED_IN' %}
+                                <span class="badge bg-warning text-dark status-badge">Checked In</span>
+                                {% elif appointment.status == 'IN_PROGRESS' %}
+                                <span class="badge bg-info status-badge">In Progress</span>
+                                {% elif appointment.status == 'COMPLETED' %}
+                                <span class="badge bg-success status-badge">Completed</span>
+                                {% elif appointment.status == 'CANCELLED' %}
+                                <span class="badge bg-danger status-badge">Cancelled</span>
+                                {% elif appointment.status == 'NO_SHOW' %}
+                                <span class="badge bg-secondary status-badge">No Show</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if appointment.status == 'SCHEDULED' or appointment.status == 'CHECKED_IN' %}
+                                <button type="button" class="btn btn-sm btn-outline-danger cancel-btn"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#cancelModal"
+                                        data-appointment-id="{{ appointment.id }}"
+                                        data-patient-name="{{ appointment.patient.user.get_full_name }}"
+                                        data-doctor-name="Dr. {{ appointment.doctor.user.get_full_name }}"
+                                        data-date="{{ appointment.appointment_date|date:'M d, Y' }}"
+                                        data-time="{{ appointment.start_time|time:'h:i A' }}">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page_obj.has_other_pages %}
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_doctor %}&doctor={{ selected_doctor }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% for num in page_obj.paginator.page_range %}
+                        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}{% if selected_doctor %}&doctor={{ selected_doctor }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endfor %}
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_doctor %}&doctor={{ selected_doctor }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No appointments found matching your filters.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Cancel Appointment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="cancelForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p>Are you sure you want to cancel this appointment?</p>
+                    <div class="alert alert-light border">
+                        <p class="mb-1"><strong>Patient:</strong> <span id="modal-patient"></span></p>
+                        <p class="mb-1"><strong>Doctor:</strong> <span id="modal-doctor"></span></p>
+                        <p class="mb-1"><strong>Date:</strong> <span id="modal-date"></span></p>
+                        <p class="mb-0"><strong>Time:</strong> <span id="modal-time"></span></p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cancel_reason" class="form-label">Reason for cancellation</label>
+                        <input type="text" name="reason" id="cancel_reason" class="form-control" placeholder="e.g., Doctor unavailable, schedule conflict">
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-bell"></i> The patient will be notified and shown recommended alternative appointments.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Appointment</button>
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-times"></i> Cancel Appointment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bulkCancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Confirm Bulk Cancellation</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fw-bold">Are you sure you want to cancel all active appointments for this doctor?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-bell"></i> All affected patients will be notified and shown recommended alternative appointments.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Go Back</button>
+                <button type="button" class="btn btn-danger" id="confirmBulkCancel">
+                    <i class="fas fa-ban"></i> Yes, Cancel All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#cancelModal').on('show.bs.modal', function(event) {
+        var button = $(event.relatedTarget);
+        var appointmentId = button.data('appointment-id');
+        var patientName = button.data('patient-name');
+        var doctorName = button.data('doctor-name');
+        var date = button.data('date');
+        var time = button.data('time');
+
+        var modal = $(this);
+        modal.find('#modal-patient').text(patientName);
+        modal.find('#modal-doctor').text(doctorName);
+        modal.find('#modal-date').text(date);
+        modal.find('#modal-time').text(time);
+
+        var form = modal.find('#cancelForm');
+        form.attr('action', '{% url "admins:admin_manage_appointments" %}' + 'cancel/' + appointmentId + '/');
+    });
+
+    $('#confirmBulkCancel').on('click', function() {
+        var doctorId = $('#bulk_doctor').val();
+        if (!doctorId) {
+            alert('Please select a doctor first.');
+            $('#bulkCancelModal').modal('hide');
+            return;
+        }
+        $('#bulkCancelForm').submit();
+    });
+});
+</script>
+{% endblock %}

@@ -12,10 +12,10 @@ from django import forms
 from datetime import datetime
 
 from appointments.models import Appointment
+from accounts.models import Notification
 from doctors.models import Doctor
 from accounts.notifications import NotificationService
 from appointments.services import AppointmentService
-from .models import PatientForm
 from .models import PatientForm
 from .services import PatientFormService
 from .forms import AppointmentFilterForm
@@ -343,3 +343,38 @@ class SubmitPatientFormView(LoginRequiredMixin, PatientRequiredMixin, View):
             messages.error(request, f'Error submitting form: {str(e)}')
             patient_form = PatientForm.objects.filter(patient=request.user.patient_profile).first()
             return render(request, self.template_name, {'patient_form': patient_form})
+
+
+class PatientNotificationsView(LoginRequiredMixin, PatientRequiredMixin, ListView):
+    template_name = 'patients/notifications.html'
+    context_object_name = 'notifications'
+    paginate_by = 10
+
+    def get_queryset(self):
+        return Notification.objects.filter(
+            user=self.request.user
+        ).order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['unread_count'] = Notification.objects.filter(
+            user=self.request.user, is_read=False
+        ).count()
+        return context
+
+
+class MarkNotificationReadView(LoginRequiredMixin, PatientRequiredMixin, View):
+    def post(self, request, notification_id):
+        Notification.objects.filter(
+            pk=notification_id, user=request.user
+        ).update(is_read=True)
+        return redirect('patients:notifications')
+
+
+class MarkAllNotificationsReadView(LoginRequiredMixin, PatientRequiredMixin, View):
+    def post(self, request):
+        Notification.objects.filter(
+            user=request.user, is_read=False
+        ).update(is_read=True)
+        messages.success(request, 'All notifications marked as read')
+        return redirect('patients:notifications')

@@ -86,3 +86,30 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_nurse(self):
         return self.role == 'NURSE'
 
+    def unread_notifications_count(self):
+        return self.notifications.filter(is_read=False).count()
+
+
+class Notification(models.Model):
+    """In-app notification for users"""
+
+    TYPE_CHOICES = [
+        ('APPOINTMENT_CANCELLED', 'Appointment Cancelled'),
+        ('BULK_CANCELLATION', 'Bulk Cancellation'),
+        ('GENERAL', 'General'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=30, choices=TYPE_CHOICES, default='GENERAL')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    recommendations = models.JSONField(default=list, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notifications'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.user.email}"

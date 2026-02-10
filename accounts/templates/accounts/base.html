@@ -47,6 +47,14 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'patients:notifications' %}">
+                            <i class="fas fa-bell"></i> Notifications
+                            {% if user.unread_notifications_count %}
+                            <span class="badge bg-danger rounded-pill">{{ user.unread_notifications_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'patients:submit_patient_form' %}">
                             <i class="fas fa-file-medical"></i> Submit Medical Form
                         </a>

@@ -261,3 +261,242 @@ class AdminDashboardService:
         ).order_by('-id')
         
         return queryset
+
+
+class AdminAppointmentService:
+    """Service layer for admin appointment management."""
+
+    @staticmethod
+    def get_appointments(doctor_id=None, date_from=None, date_to=None, status=None):
+        queryset = Appointment.objects.select_related(
+            'doctor__user', 'patient__user'
+        ).order_by('-appointment_date', '-start_time')
+
+        if doctor_id:
+            queryset = queryset.filter(doctor_id=doctor_id)
+        if date_from:
+            queryset = queryset.filter(appointment_date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(appointment_date__lte=date_to)
+        if status:
+            queryset = queryset.filter(status=status)
+
+        return queryset
+
+    @staticmethod
+    @transaction.atomic
+    def cancel_single_appointment(appointment_id, reason=''):
+        from accounts.models import Notification
+        try:
+            appointment = Appointment.objects.select_related(
+                'doctor__user', 'patient__user'
+            ).get(pk=appointment_id)
+
+            if appointment.status == 'CANCELLED':
+                return False, 'Appointment is already cancelled'
+
+            if appointment.status in ('COMPLETED', 'NO_SHOW'):
+                return False, 'Cannot cancel a completed or no-show appointment'
+
+            Appointment.objects.filter(pk=appointment_id).update(
+                status='CANCELLED', updated_at=timezone.now()
+            )
+
+            recommendations = AdminAppointmentService._get_recommendations(
+                appointment.doctor,
+                appointment.patient,
+                appointment.appointment_date
+            )
+
+            doctor_name = f"Dr. {appointment.doctor.user.get_full_name()}"
+            cancel_reason = f" Reason: {reason}" if reason else ""
+
+            Notification.objects.create(
+                user=appointment.patient.user,
+                notification_type='APPOINTMENT_CANCELLED',
+                title='Appointment Cancelled',
+                message=(
+                    f'Your appointment with {doctor_name} on '
+                    f'{appointment.appointment_date.strftime("%B %d, %Y")} at '
+                    f'{appointment.start_time.strftime("%I:%M %p")} has been cancelled '
+                    f'by the administrator.{cancel_reason}'
+                ),
+                recommendations=recommendations,
+            )
+
+            try:
+                NotificationService.send_notification(
+                    appointment.patient.user,
+                    'BOOKING_CONFIRMATION',
+                    context={
+                        'doctor_name': doctor_name,
+                        'date': appointment.appointment_date.strftime('%Y-%m-%d'),
+                        'time': f'CANCELLED - {appointment.start_time.strftime("%I:%M %p")}',
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send cancellation email: {e}")
+
+            return True, 'Appointment cancelled and patient notified'
+
+        except Appointment.DoesNotExist:
+            return False, 'Appointment not found'
+        except Exception as e:
+            logger.error(f"Error cancelling appointment {appointment_id}: {e}", exc_info=True)
+            return False, str(e)
+
+    @staticmethod
+    @transaction.atomic
+    def cancel_doctor_appointments(doctor_id, date=None, reason=''):
+        from accounts.models import Notification
+        try:
+            doctor = Doctor.objects.select_related('user').get(pk=doctor_id)
+        except Doctor.DoesNotExist:
+            return False, 'Doctor not found', 0
+
+        queryset = Appointment.objects.filter(
+            doctor=doctor,
+            status__in=['SCHEDULED', 'CHECKED_IN']
+        )
+        if date:
+            queryset = queryset.filter(appointment_date=date)
+
+        appointments = queryset.select_related('patient__user')
+        cancelled_count = 0
+        doctor_name = f"Dr. {doctor.user.get_full_name()}"
+        cancel_reason = f" Reason: {reason}" if reason else ""
+
+        now = timezone.now()
+        for appointment in appointments:
+            Appointment.objects.filter(pk=appointment.pk).update(
+                status='CANCELLED', updated_at=now
+            )
+            cancelled_count += 1
+
+            recommendations = AdminAppointmentService._get_recommendations(
+                doctor,
+                appointment.patient,
+                appointment.appointment_date
+            )
+
+            date_str = appointment.appointment_date.strftime("%B %d, %Y")
+            time_str = appointment.start_time.strftime("%I:%M %p")
+
+            if date:
+                msg = (
+                    f'Your appointment with {doctor_name} on {date_str} at {time_str} '
+                    f'has been cancelled by the administrator.{cancel_reason}'
+                )
+            else:
+                msg = (
+                    f'All your appointments with {doctor_name} have been cancelled '
+                    f'by the administrator. Your appointment on {date_str} at {time_str} '
+                    f'is affected.{cancel_reason}'
+                )
+
+            Notification.objects.create(
+                user=appointment.patient.user,
+                notification_type='BULK_CANCELLATION',
+                title=f'Appointment with {doctor_name} Cancelled',
+                message=msg,
+                recommendations=recommendations,
+            )
+
+        if cancelled_count == 0:
+            return False, 'No active appointments found to cancel', 0
+
+        return True, f'{cancelled_count} appointment(s) cancelled and patients notified', cancelled_count
+
+    @staticmethod
+    def _get_recommendations(doctor, patient, original_date):
+        from doctors.models import DoctorAvailability
+        recommendations = []
+
+        same_doctor_appts = Appointment.objects.filter(
+            doctor=doctor,
+            appointment_date__gt=original_date,
+            appointment_date__lte=original_date + timedelta(days=30),
+            status='SCHEDULED'
+        ).values_list('appointment_date', 'start_time')
+        booked_slots = {(a[0], a[1]) for a in same_doctor_appts}
+
+        availabilities = DoctorAvailability.objects.filter(
+            doctor=doctor, is_active=True
+        )
+        if availabilities.exists():
+            from datetime import datetime
+            check_date = original_date + timedelta(days=1)
+            slots_found = 0
+            while check_date <= original_date + timedelta(days=14) and slots_found < 3:
+                day_name = check_date.strftime('%A').upper()
+                avail = availabilities.filter(day_of_week=day_name).first()
+                if avail:
+                    start = datetime.combine(check_date, avail.start_time)
+                    end = datetime.combine(check_date, avail.end_time)
+                    slot_dur = timedelta(minutes=avail.slot_duration)
+                    current = start
+                    while current + slot_dur <= end and slots_found < 3:
+                        if (check_date, current.time()) not in booked_slots:
+                            recommendations.append({
+                                'type': 'same_doctor',
+                                'doctor_name': f"Dr. {doctor.user.get_full_name()}",
+                                'specialization': doctor.get_specialization_display(),
+                                'date': check_date.strftime('%Y-%m-%d'),
+                                'date_display': check_date.strftime('%B %d, %Y'),
+                                'time': current.time().strftime('%I:%M %p'),
+                                'doctor_id': doctor.pk,
+                            })
+                            slots_found += 1
+                            break
+                        current += slot_dur
+                check_date += timedelta(days=1)
+
+        same_spec_doctors = Doctor.objects.filter(
+            specialization=doctor.specialization
+        ).exclude(pk=doctor.pk).select_related('user')
+
+        for alt_doctor in same_spec_doctors[:3]:
+            alt_avails = DoctorAvailability.objects.filter(
+                doctor=alt_doctor, is_active=True
+            )
+            if alt_avails.exists():
+                from datetime import datetime
+                check_date = original_date
+                found = False
+                while check_date <= original_date + timedelta(days=14) and not found:
+                    day_name = check_date.strftime('%A').upper()
+                    avail = alt_avails.filter(day_of_week=day_name).first()
+                    if avail:
+                        alt_booked = Appointment.objects.filter(
+                            doctor=alt_doctor,
+                            appointment_date=check_date,
+                            status__in=['SCHEDULED', 'CHECKED_IN']
+                        ).count()
+                        if alt_booked < 15:
+                            start = datetime.combine(check_date, avail.start_time)
+                            end = datetime.combine(check_date, avail.end_time)
+                            slot_dur = timedelta(minutes=avail.slot_duration)
+                            current = start
+                            while current + slot_dur <= end:
+                                is_booked = Appointment.objects.filter(
+                                    doctor=alt_doctor,
+                                    appointment_date=check_date,
+                                    start_time=current.time(),
+                                    status__in=['SCHEDULED', 'CHECKED_IN']
+                                ).exists()
+                                if not is_booked:
+                                    recommendations.append({
+                                        'type': 'same_specialization',
+                                        'doctor_name': f"Dr. {alt_doctor.user.get_full_name()}",
+                                        'specialization': alt_doctor.get_specialization_display(),
+                                        'date': check_date.strftime('%Y-%m-%d'),
+                                        'date_display': check_date.strftime('%B %d, %Y'),
+                                        'time': current.time().strftime('%I:%M %p'),
+                                        'doctor_id': alt_doctor.pk,
+                                    })
+                                    found = True
+                                    break
+                                current += slot_dur
+                    check_date += timedelta(days=1)
+
+        return recommendations

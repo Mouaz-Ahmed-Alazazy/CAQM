@@ -4,8 +4,9 @@ from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.utils import timezone
-from .services import AdminService, AdminDashboardService
+from .services import AdminService, AdminDashboardService, AdminAppointmentService
 from accounts.models import User
+from doctors.models import Doctor
 from datetime import datetime, timedelta
 
 
@@ -21,9 +22,6 @@ class AdminRequiredMixin(UserPassesTestMixin):
 
 
 class AdminUserRegistrationView(LoginRequiredMixin, AdminRequiredMixin, View):
-    """
-    Admin can register new users (Patient, Doctor, Admin).
-    """
     template_name = 'admins/admin_register_user.html'
     
     def get(self, request):
@@ -67,7 +65,6 @@ class AdminUserRegistrationView(LoginRequiredMixin, AdminRequiredMixin, View):
                 assigned_doctor_id = request.POST.get('assigned_doctor')
                 if assigned_doctor_id:
                     try:
-                        from doctors.models import Doctor
                         kwargs['assigned_doctor'] = Doctor.objects.get(pk=assigned_doctor_id)
                     except Doctor.DoesNotExist:
                         messages.warning(request, 'Selected doctor not found. Nurse will be created without assigned doctor.')
@@ -89,9 +86,6 @@ class AdminUserRegistrationView(LoginRequiredMixin, AdminRequiredMixin, View):
 
 
 class AdminUserListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
-    """
-    List all users with filtering by role.
-    """
     model = User
     template_name = 'admins/admin_user_list.html'
     context_object_name = 'users'
@@ -108,8 +102,6 @@ class AdminUserListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
 
 
 class AdminDeleteUserView(LoginRequiredMixin, AdminRequiredMixin, View):
-    """Delete a user"""
-    
     def post(self, request, user_id):
         try:
             if user_id == request.user.id:
@@ -130,39 +122,24 @@ class AdminDeleteUserView(LoginRequiredMixin, AdminRequiredMixin, View):
 
 
 class AdminDashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
-    """
-    Admin dashboard overview page.
-    Shows high-level statistics and today's summary.
-    """
     template_name = 'admins/admin_dashboard.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
         today = timezone.now().date()
-        
-        # Get overview statistics and today's summary only
         context['overview'] = AdminDashboardService.get_overview_stats()
         context['today_summary'] = AdminDashboardService.get_today_summary()
         context['today'] = today
-        
         return context
 
 
 class AdminQueueStatsView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
-    """
-    Queue statistics page with filtering.
-    Shows detailed doctor queue statistics with past, present, and future data.
-    """
     template_name = 'admins/admin_queue_stats.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        # Get date range from query params
         date_from_str = self.request.GET.get('date_from')
         date_to_str = self.request.GET.get('date_to')
-        
         today = timezone.now().date()
         
         try:
@@ -172,23 +149,110 @@ class AdminQueueStatsView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
             date_from = today - timedelta(days=30)
             date_to = today + timedelta(days=30)
         
-        # Get doctor statistics
         context['doctor_stats'] = AdminDashboardService.get_doctor_queue_stats(date_from, date_to)
         context['date_from'] = date_from
         context['date_to'] = date_to
         context['today'] = today
-        
         return context
 
 
 class AdminActivityLogView(LoginRequiredMixin, AdminRequiredMixin, ListView):
-    """
-    Recent activity log page with pagination.
-    Shows recent queue activity across all doctors.
-    """
     template_name = 'admins/admin_activity_log.html'
     context_object_name = 'activities'
     paginate_by = 20
     
     def get_queryset(self):
         return AdminDashboardService.get_recent_activity()
+
+
+class AdminManageAppointmentsView(LoginRequiredMixin, AdminRequiredMixin, ListView):
+    template_name = 'admins/admin_manage_appointments.html'
+    context_object_name = 'appointments'
+    paginate_by = 20
+
+    def get_queryset(self):
+        doctor_id = self.request.GET.get('doctor')
+        date_from = self.request.GET.get('date_from')
+        date_to = self.request.GET.get('date_to')
+        status = self.request.GET.get('status')
+
+        if date_from:
+            try:
+                date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+            except ValueError:
+                date_from = None
+        if date_to:
+            try:
+                date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+            except ValueError:
+                date_to = None
+
+        return AdminAppointmentService.get_appointments(
+            doctor_id=doctor_id,
+            date_from=date_from,
+            date_to=date_to,
+            status=status,
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['doctors'] = Doctor.objects.select_related('user').all()
+        context['status_choices'] = [
+            ('', 'All Statuses'),
+            ('SCHEDULED', 'Scheduled'),
+            ('CHECKED_IN', 'Checked In'),
+            ('IN_PROGRESS', 'In Progress'),
+            ('COMPLETED', 'Completed'),
+            ('CANCELLED', 'Cancelled'),
+            ('NO_SHOW', 'No Show'),
+        ]
+        context['selected_doctor'] = self.request.GET.get('doctor', '')
+        context['selected_status'] = self.request.GET.get('status', '')
+        context['date_from'] = self.request.GET.get('date_from', '')
+        context['date_to'] = self.request.GET.get('date_to', '')
+        return context
+
+
+class AdminCancelAppointmentView(LoginRequiredMixin, AdminRequiredMixin, View):
+    def post(self, request, appointment_id):
+        reason = request.POST.get('reason', '')
+        success, message = AdminAppointmentService.cancel_single_appointment(
+            appointment_id, reason=reason
+        )
+
+        if success:
+            messages.success(request, message)
+        else:
+            messages.error(request, message)
+
+        return redirect('admins:admin_manage_appointments')
+
+
+class AdminCancelDoctorAppointmentsView(LoginRequiredMixin, AdminRequiredMixin, View):
+    def post(self, request):
+        doctor_id = request.POST.get('doctor_id')
+        date_str = request.POST.get('date')
+        reason = request.POST.get('reason', '')
+
+        if not doctor_id:
+            messages.error(request, 'Please select a doctor')
+            return redirect('admins:admin_manage_appointments')
+
+        date = None
+        if date_str:
+            try:
+                date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'Invalid date format')
+                return redirect('admins:admin_manage_appointments')
+
+        success, message, count = AdminAppointmentService.cancel_doctor_appointments(
+            doctor_id, date=date, reason=reason
+        )
+
+        if success:
+            messages.success(request, message)
+        else:
+            messages.error(request, message)
+
+        return redirect('admins:admin_manage_appointments')

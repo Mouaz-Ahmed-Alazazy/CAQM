@@ -55,12 +55,39 @@ The admin dashboard (`/admins/`) provides comprehensive queue management:
 - **Doctor statistics**: Tabbed view for All Doctors / Past / Today / Future queues
 - **Date filtering**: Filter statistics by date range
 - **Navigation**: Bidirectional links between custom dashboard and Django admin
+- **Manage Appointments**: Cancel single or bulk appointments, notify patients with alternative recommendations
+
+### Appointment Management (`/admins/appointments/`)
+- Filter appointments by doctor, date range, and status
+- Cancel individual appointments with reason
+- Bulk cancel all active appointments for a doctor (optionally for a specific date)
+- Automatic patient notifications with recommended alternatives:
+  - Same doctor on a different day (within 14 days)
+  - Different doctor with the same specialization (within 14 days)
+- Uses queryset.update() instead of model.save() to bypass date validation for cancellations
+
+### Patient Notifications (`/patients/notifications/`)
+- In-app notification system via `Notification` model in `accounts/models.py`
+- Notification badge in navbar shows unread count
+- Cancellation notifications include recommended alternative appointments with direct booking links
+- Mark individual or all notifications as read
 
 ### Test Admin Account
 - Email: admin@clinic.com
 - Password: admin123456
 
 ## Recent Changes
+- February 10, 2026: Admin appointment management & patient notifications
+  - Added Manage Appointments page at `/admins/appointments/`
+  - Single appointment cancellation with reason and patient notification
+  - Bulk cancel all appointments for a doctor (optionally for a specific date)
+  - Notification model (`accounts/models.py`) for in-app notifications
+  - Recommendation engine: suggests same doctor other days + same specialization doctors within 14 days
+  - Patient notification page with unread badge in navbar
+  - Direct booking links from recommended alternatives
+  - Manage Appointments button added to admin dashboard Quick Navigation
+  - Fixed FK mismatch in appointments table (wrong reference to patients.id instead of patients.user_id)
+  - Used queryset.update() for cancellations to bypass Appointment.clean() date validation
 - February 09, 2026: Google OAuth authentication & bug fixes
   - Integrated django-allauth for Google login/signup
   - Fixed MultipleObjectsReturned error: moved Google credentials from inline settings to DB SocialApp
