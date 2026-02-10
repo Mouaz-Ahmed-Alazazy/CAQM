@@ -77,6 +77,14 @@ The admin dashboard (`/admins/`) provides comprehensive queue management:
 - Password: admin123456
 
 ## Recent Changes
+- February 10, 2026: Comprehensive admin UX improvements
+  - Critical fix: Blocked cancellation of past appointments (service-layer date check + template-level guard)
+  - Register User form: email duplicate check, phone regex validation, password strength meter & confirmation, required specialization for doctors
+  - User list: Bootstrap modal for delete confirmations, search by name/email with pagination
+  - Manage Appointments: mobile-responsive filter layout (2 rows), required cancel reason, tooltip on bulk cancel date
+  - Dashboard: clickable stat cards linking to filtered views, improved card spacing
+  - Activity log: search by patient/doctor name, date range filter, status filter with pagination
+  - Accessibility: 51+ ARIA labels added across all admin templates for screen reader support
 - February 10, 2026: Admin appointment management & patient notifications
   - Added Manage Appointments page at `/admins/appointments/`
   - Single appointment cancellation with reason and patient notification
