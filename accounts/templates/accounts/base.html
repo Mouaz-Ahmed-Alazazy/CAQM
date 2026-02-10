@@ -102,6 +102,13 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li>
+                                {% if user.is_patient %}
+                                <a href="{% url 'accounts:profile_update' %}" class="dropdown-item">
+                                    <i class="fas fa-user"></i> My Account
+                                </a>
+                                {% endif %}
+                            </li>
+                            <li>
                                 <form method="post" action="{% url 'accounts:logout' %}" class="logout-form">
                                     {% csrf_token %}
                                     <button type="submit" class="dropdown-item logout-btn">
