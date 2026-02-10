@@ -12,40 +12,67 @@
                     <h4><i class="fas fa-user-plus"></i> Register New User (Admin)</h4>
                 </div>
                 <div class="card-body">
-                    <form method="post" id="registerForm">
+                    <form method="post" id="registerForm" novalidate>
                         {% csrf_token %}
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" id="email" name="email" required>
+                                <input type="email" class="form-control" id="email" name="email" required
+                                       placeholder="user@example.com">
+                                <div class="invalid-feedback" id="email-error">Please enter a valid email address.</div>
                             </div>
 
                             <div class="col-md-6 mb-3">
-                                <label for="password" class="form-label">Password <span
-                                        class="text-danger">*</span></label>
-                                <input type="password" class="form-control" id="password" name="password" required>
+                                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" name="password" required
+                                           minlength="8">
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword"
+                                            title="Show/Hide Password" aria-label="Toggle password visibility">
+                                        <i class="fas fa-eye" id="togglePasswordIcon"></i>
+                                    </button>
+                                </div>
+                                <div class="invalid-feedback" id="password-error">Password must be at least 8 characters.</div>
+                                <div class="mt-1" id="password-strength-bar" style="display:none;">
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar" id="strength-meter" role="progressbar" style="width: 0%;"></div>
+                                    </div>
+                                    <small id="strength-text" class="text-muted"></small>
+                                </div>
+                                <small class="text-muted">Min 8 characters, include letters and numbers</small>
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="first_name" class="form-label">First Name <span
-                                        class="text-danger">*</span></label>
+                                <label for="password_confirm" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="password_confirm" required minlength="8">
+                                <div class="invalid-feedback" id="password-confirm-error">Passwords do not match.</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="first_name" name="first_name" required>
+                                <div class="invalid-feedback">First name is required.</div>
                             </div>
 
                             <div class="col-md-6 mb-3">
-                                <label for="last_name" class="form-label">Last Name <span
-                                        class="text-danger">*</span></label>
+                                <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                <div class="invalid-feedback">Last name is required.</div>
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="phone" class="form-label">Phone <span class="text-danger">*</span></label>
-                                <input type="tel" class="form-control" id="phone" name="phone" required>
+                                <input type="tel" class="form-control" id="phone" name="phone" required
+                                       pattern="[0-9]{10,15}" title="Enter 10-15 digits"
+                                       placeholder="e.g. 0123456789">
+                                <div class="invalid-feedback" id="phone-error">Enter a valid phone number (10-15 digits).</div>
                             </div>
 
                             <div class="col-md-6 mb-3">
@@ -57,6 +84,7 @@
                                     <option value="NURSE">Nurse</option>
                                     <option value="ADMIN">Admin</option>
                                 </select>
+                                <div class="invalid-feedback">Please select a role.</div>
                             </div>
                         </div>
 
@@ -64,6 +92,7 @@
                             <div class="col-md-6 mb-3">
                                 <label for="date_of_birth" class="form-label">Date of Birth <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+                                <div class="invalid-feedback" id="dob-error">Please enter a valid date of birth.</div>
                             </div>
 
                             <div class="col-md-6 mb-3">
@@ -73,6 +102,7 @@
                                     <option value="MALE">Male</option>
                                     <option value="FEMALE">Female</option>
                                 </select>
+                                <div class="invalid-feedback">Please select a gender.</div>
                             </div>
                         </div>
 
@@ -82,7 +112,9 @@
                                 <div class="col-md-6 mb-3">
                                     <label for="emergency_contact" class="form-label">Emergency Contact</label>
                                     <input type="tel" class="form-control" id="emergency_contact"
-                                        name="emergency_contact">
+                                        name="emergency_contact" pattern="[0-9]{10,15}"
+                                        title="Enter 10-15 digits" placeholder="e.g. 0123456789">
+                                    <div class="invalid-feedback">Enter a valid phone number (10-15 digits).</div>
                                 </div>
 
                                 <div class="col-md-6 mb-3">
@@ -108,6 +140,7 @@
                                         <option value="PEDIATRICS">Pediatrics</option>
                                         <option value="PSYCHIATRY">Psychiatry</option>
                                     </select>
+                                    <div class="invalid-feedback">Please select a specialization.</div>
                                 </div>
 
                                 <div class="col-md-6 mb-3">
@@ -128,14 +161,17 @@
                                 <select class="form-select" id="assigned_doctor" name="assigned_doctor">
                                     <option value="">None - Assign Later</option>
                                 </select>
+                                <div id="doctor-load-error" class="text-danger mt-1" style="display:none;">
+                                    <small><i class="fas fa-exclamation-circle"></i> Could not load doctors list. You can still register the nurse.</small>
+                                </div>
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-between mt-4">
-                            <a href="{% url 'admins:admin_user_list' %}" class="btn btn-secondary">
+                            <a href="{% url 'admins:admin_user_list' %}" class="btn btn-secondary" aria-label="Back to user list">
                                 <i class="fas fa-arrow-left"></i> Back to List
                             </a>
-                            <button type="submit" class="btn btn-danger">
+                            <button type="submit" class="btn btn-danger" id="submitBtn" aria-label="Register new user with provided information">
                                 <i class="fas fa-check-circle"></i> Register User
                             </button>
                         </div>
@@ -147,6 +183,9 @@
 </div>
 
 <script>
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date_of_birth').setAttribute('max', today);
+
     async function loadDoctors() {
         try {
             const response = await fetch('/admins/api/doctors/');
@@ -161,9 +200,12 @@
                     option.textContent = `Dr. ${doctor.name} - ${doctor.specialization}`;
                     select.appendChild(option);
                 });
+                document.getElementById('doctor-load-error').style.display = 'none';
+            } else {
+                document.getElementById('doctor-load-error').style.display = 'block';
             }
         } catch (error) {
-            console.log('Could not load doctors list');
+            document.getElementById('doctor-load-error').style.display = 'block';
         }
     }
 
@@ -186,6 +228,181 @@
         } else if (this.value === 'NURSE') {
             nurseFields.style.display = 'block';
             loadDoctors();
+        }
+    });
+
+    document.getElementById('togglePassword').addEventListener('click', function () {
+        const passwordInput = document.getElementById('password');
+        const icon = document.getElementById('togglePasswordIcon');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    });
+
+    function evaluatePasswordStrength(password) {
+        let score = 0;
+        if (password.length >= 8) score++;
+        if (password.length >= 12) score++;
+        if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+        if (/\d/.test(password)) score++;
+        if (/[^a-zA-Z0-9]/.test(password)) score++;
+        return score;
+    }
+
+    document.getElementById('password').addEventListener('input', function () {
+        const bar = document.getElementById('password-strength-bar');
+        const meter = document.getElementById('strength-meter');
+        const text = document.getElementById('strength-text');
+        const val = this.value;
+
+        if (val.length === 0) {
+            bar.style.display = 'none';
+            return;
+        }
+
+        bar.style.display = 'block';
+        const score = evaluatePasswordStrength(val);
+        const levels = [
+            { width: '20%', color: 'bg-danger', label: 'Very Weak' },
+            { width: '40%', color: 'bg-warning', label: 'Weak' },
+            { width: '60%', color: 'bg-info', label: 'Fair' },
+            { width: '80%', color: 'bg-primary', label: 'Strong' },
+            { width: '100%', color: 'bg-success', label: 'Very Strong' },
+        ];
+        const level = levels[Math.min(score, levels.length - 1)];
+        meter.style.width = level.width;
+        meter.className = 'progress-bar ' + level.color;
+        text.textContent = level.label;
+    });
+
+    function clearValidation(input) {
+        input.classList.remove('is-invalid');
+        input.classList.remove('is-valid');
+    }
+
+    function setInvalid(input, msg) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        const feedback = input.closest('.mb-3')?.querySelector('.invalid-feedback')
+                         || input.parentElement.querySelector('.invalid-feedback');
+        if (feedback && msg) feedback.textContent = msg;
+    }
+
+    function setValid(input) {
+        input.classList.add('is-valid');
+        input.classList.remove('is-invalid');
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', function (e) {
+        let isValid = true;
+
+        const email = document.getElementById('email');
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email.value.trim() || !emailRegex.test(email.value.trim())) {
+            setInvalid(email, 'Please enter a valid email address.');
+            isValid = false;
+        } else {
+            setValid(email);
+        }
+
+        const password = document.getElementById('password');
+        if (!password.value || password.value.length < 8) {
+            setInvalid(password, 'Password must be at least 8 characters.');
+            isValid = false;
+        } else {
+            setValid(password);
+        }
+
+        const confirmPw = document.getElementById('password_confirm');
+        if (confirmPw.value !== password.value) {
+            setInvalid(confirmPw, 'Passwords do not match.');
+            isValid = false;
+        } else if (!confirmPw.value) {
+            setInvalid(confirmPw, 'Please confirm the password.');
+            isValid = false;
+        } else {
+            setValid(confirmPw);
+        }
+
+        const phone = document.getElementById('phone');
+        const phoneRegex = /^[0-9]{10,15}$/;
+        if (!phone.value.trim() || !phoneRegex.test(phone.value.trim())) {
+            setInvalid(phone, 'Enter a valid phone number (10-15 digits).');
+            isValid = false;
+        } else {
+            setValid(phone);
+        }
+
+        const dob = document.getElementById('date_of_birth');
+        if (!dob.value) {
+            setInvalid(dob, 'Please enter a date of birth.');
+            isValid = false;
+        } else if (dob.value > today) {
+            setInvalid(dob, 'Date of birth cannot be in the future.');
+            isValid = false;
+        } else {
+            setValid(dob);
+        }
+
+        const firstName = document.getElementById('first_name');
+        if (!firstName.value.trim()) {
+            setInvalid(firstName);
+            isValid = false;
+        } else {
+            setValid(firstName);
+        }
+
+        const lastName = document.getElementById('last_name');
+        if (!lastName.value.trim()) {
+            setInvalid(lastName);
+            isValid = false;
+        } else {
+            setValid(lastName);
+        }
+
+        const role = document.getElementById('role');
+        if (!role.value) {
+            setInvalid(role);
+            isValid = false;
+        } else {
+            setValid(role);
+        }
+
+        const gender = document.getElementById('gender');
+        if (!gender.value) {
+            setInvalid(gender);
+            isValid = false;
+        } else {
+            setValid(gender);
+        }
+
+        if (role.value === 'DOCTOR') {
+            const spec = document.getElementById('specialization');
+            if (!spec.value) {
+                setInvalid(spec, 'Please select a specialization.');
+                isValid = false;
+            } else {
+                setValid(spec);
+            }
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            const firstInvalid = this.querySelector('.is-invalid');
+            if (firstInvalid) firstInvalid.focus();
+        }
+    });
+
+    const fieldsToWatch = ['email', 'password', 'password_confirm', 'phone', 'first_name', 'last_name', 'date_of_birth', 'role', 'gender'];
+    fieldsToWatch.forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', function() { clearValidation(this); });
+            el.addEventListener('change', function() { clearValidation(this); });
         }
     });
 </script>

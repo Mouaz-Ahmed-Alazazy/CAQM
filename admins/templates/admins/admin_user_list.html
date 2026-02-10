@@ -13,11 +13,11 @@
             </a>
         </div>
         <div class="card-body">
-            <!-- Filters -->
             <form method="get" class="mb-3">
-                <div class="row">
-                    <div class="col-md-4">
-                        <select name="role" class="form-select" onchange="this.form.submit()">
+                <div class="row g-2 align-items-end">
+                    <div class="col-sm-4 col-md-3">
+                        <label for="role" class="form-label mb-1 small text-muted">Filter by Role</label>
+                        <select name="role" class="form-select" id="role" onchange="this.form.submit()">
                             <option value="">All Roles</option>
                             <option value="PATIENT" {% if role_filter == 'PATIENT' %}selected{% endif %}>Patients</option>
                             <option value="DOCTOR" {% if role_filter == 'DOCTOR' %}selected{% endif %}>Doctors</option>
@@ -25,10 +25,26 @@
                             <option value="NURSE" {% if role_filter == 'NURSE' %}selected{% endif %}>Nurses</option>
                         </select>
                     </div>
+                    <div class="col-sm-5 col-md-4">
+                        <label for="search" class="form-label mb-1 small text-muted">Search</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="search" name="search"
+                                   placeholder="Name or email..." value="{{ search_query }}" aria-label="Search users by name or email">
+                            <button class="btn btn-outline-secondary" type="submit" aria-label="Search users">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% if search_query or role_filter %}
+                    <div class="col-auto">
+                        <a href="{% url 'admins:admin_user_list' %}" class="btn btn-outline-secondary" aria-label="Clear search and role filters">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
             </form>
 
-            <!-- User Table -->
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-dark">
@@ -49,39 +65,49 @@
                             <td>{{ user.phone }}</td>
                             <td>
                                 <span
-                                    class="badge bg-{% if user.role == 'ADMIN' %}danger{% elif user.role == 'DOCTOR' %}primary{% else %}success{% endif %}">
+                                    class="badge bg-{% if user.role == 'ADMIN' %}danger{% elif user.role == 'DOCTOR' %}primary{% elif user.role == 'NURSE' %}info{% else %}success{% endif %}">
                                     {{ user.get_role_display }}
                                 </span>
                             </td>
                             <td>{{ user.created_at|date:'Y-m-d' }}</td>
                             <td>
-                                <form method="post" action="{% url 'admins:admin_delete_user' user.id %}"
-                                    style="display: inline;"
-                                    onsubmit="return confirm('Are you sure you want to delete {{ user.get_full_name }}?');">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-danger" {% if user.id == request.user.id %}disabled{% endif %}>
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
-                                </form>
+                                {% if user.id != request.user.id %}
+                                <button type="button" class="btn btn-sm btn-danger delete-user-btn"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteUserModal"
+                                        data-user-id="{{ user.id }}"
+                                        data-user-name="{{ user.get_full_name }}"
+                                        data-user-email="{{ user.email }}"
+                                        data-user-role="{{ user.get_role_display }}"
+                                        aria-label="Delete user {{ user.get_full_name }}">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                                {% else %}
+                                <button type="button" class="btn btn-sm btn-danger" disabled title="Cannot delete yourself" aria-label="Delete user button is disabled because you cannot delete yourself">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted">No users found</td>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-users-slash fa-2x mb-2 d-block"></i>
+                                No users found{% if search_query %} matching "{{ search_query }}"{% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
 
-            <!-- Pagination -->
             {% if is_paginated %}
-            <nav>
+            <nav aria-label="User list pagination">
                 <ul class="pagination justify-content-center">
                     {% if page_obj.has_previous %}
                     <li class="page-item">
                         <a class="page-link"
-                            href="?page={{ page_obj.previous_page_number }}{% if role_filter %}&role={{ role_filter }}{% endif %}">Previous</a>
+                            href="?page={{ page_obj.previous_page_number }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Go to previous page">Previous</a>
                     </li>
                     {% endif %}
 
@@ -92,7 +118,7 @@
                     {% if page_obj.has_next %}
                     <li class="page-item">
                         <a class="page-link"
-                            href="?page={{ page_obj.next_page_number }}{% if role_filter %}&role={{ role_filter }}{% endif %}">Next</a>
+                            href="?page={{ page_obj.next_page_number }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Go to next page">Next</a>
                     </li>
                     {% endif %}
                 </ul>
@@ -101,4 +127,53 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="deleteUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close delete user confirmation dialog"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this user?</p>
+                <div class="card bg-light">
+                    <div class="card-body py-2">
+                        <strong id="deleteUserName"></strong><br>
+                        <small class="text-muted" id="deleteUserEmail"></small><br>
+                        <span class="badge bg-secondary mt-1" id="deleteUserRole"></span>
+                    </div>
+                </div>
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="fas fa-exclamation-circle"></i> This action cannot be undone. All associated data will be permanently removed.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Cancel deletion and close dialog">Cancel</button>
+                <form method="post" id="deleteUserForm" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" aria-label="Confirm delete user">
+                        <i class="fas fa-trash"></i> Delete User
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.delete-user-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var userId = this.getAttribute('data-user-id');
+            var userName = this.getAttribute('data-user-name');
+            var userEmail = this.getAttribute('data-user-email');
+            var userRole = this.getAttribute('data-user-role');
+
+            document.getElementById('deleteUserName').textContent = userName;
+            document.getElementById('deleteUserEmail').textContent = userEmail;
+            document.getElementById('deleteUserRole').textContent = userRole;
+            document.getElementById('deleteUserForm').action = '/admins/users/' + userId + '/delete/';
+        });
+    });
+</script>
 {% endblock %}

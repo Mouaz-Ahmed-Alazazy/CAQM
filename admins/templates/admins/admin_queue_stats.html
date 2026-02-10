@@ -60,14 +60,14 @@
                         <div class="col-md-4">
                             <label class="form-label"><i class="fas fa-calendar"></i> From Date</label>
                             <input type="date" name="date_from" class="form-control"
-                                value="{{ date_from|date:'Y-m-d' }}">
+                                value="{{ date_from|date:'Y-m-d' }}" aria-label="Filter queue statistics from date">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label"><i class="fas fa-calendar"></i> To Date</label>
-                            <input type="date" name="date_to" class="form-control" value="{{ date_to|date:'Y-m-d' }}">
+                            <input type="date" name="date_to" class="form-control" value="{{ date_to|date:'Y-m-d' }}" aria-label="Filter queue statistics to date">
                         </div>
                         <div class="col-md-4">
-                            <button type="submit" class="btn btn-primary w-100">
+                            <button type="submit" class="btn btn-primary w-100" aria-label="Apply queue statistics date filter">
                                 <i class="fas fa-filter"></i> Apply Filter
                             </button>
                         </div>
@@ -85,25 +85,25 @@
                     <ul class="nav nav-pills" id="queueTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="all-tab" data-bs-toggle="pill"
-                                data-bs-target="#all-doctors" type="button">
+                                data-bs-target="#all-doctors" type="button" aria-label="View all doctors queue statistics" aria-selected="true">
                                 <i class="fas fa-th-list"></i> All Doctors
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="past-tab" data-bs-toggle="pill" data-bs-target="#past-queues"
-                                type="button">
+                                type="button" aria-label="View past queues statistics" aria-selected="false">
                                 <i class="fas fa-history"></i> Past Queues
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="today-tab" data-bs-toggle="pill" data-bs-target="#today-queues"
-                                type="button">
+                                type="button" aria-label="View today's queue statistics" aria-selected="false">
                                 <i class="fas fa-clock"></i> Today
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="future-tab" data-bs-toggle="pill"
-                                data-bs-target="#future-queues" type="button">
+                                data-bs-target="#future-queues" type="button" aria-label="View upcoming queue statistics" aria-selected="false">
                                 <i class="fas fa-calendar-alt"></i> Upcoming
                             </button>
                         </li>

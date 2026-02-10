@@ -29,15 +29,28 @@ class AdminUserRegistrationView(LoginRequiredMixin, AdminRequiredMixin, View):
     
     def post(self, request):
         try:
-            email = request.POST.get('email')
+            email = request.POST.get('email', '').strip()
             password = request.POST.get('password')
-            first_name = request.POST.get('first_name')
-            last_name = request.POST.get('last_name')
-            phone = request.POST.get('phone')
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            phone = request.POST.get('phone', '').strip()
             role = request.POST.get('role')
-            
+
             if not all([email, password, first_name, last_name, phone, role]):
                 messages.error(request, 'All fields are required')
+                return render(request, self.template_name)
+
+            if User.objects.filter(email=email).exists():
+                messages.error(request, 'A user with this email already exists')
+                return render(request, self.template_name)
+
+            import re
+            if not re.match(r'^[0-9]{10,15}$', phone):
+                messages.error(request, 'Phone number must be 10-15 digits')
+                return render(request, self.template_name)
+
+            if len(password) < 8:
+                messages.error(request, 'Password must be at least 8 characters')
                 return render(request, self.template_name)
             
             kwargs = {}
@@ -59,7 +72,11 @@ class AdminUserRegistrationView(LoginRequiredMixin, AdminRequiredMixin, View):
                 kwargs['address'] = request.POST.get('address', '')
                 kwargs['emergency_contact'] = request.POST.get('emergency_contact', '')
             elif role == 'DOCTOR':
-                kwargs['specialization'] = request.POST.get('specialization')
+                specialization = request.POST.get('specialization')
+                if not specialization:
+                    messages.error(request, 'Specialization is required for doctors')
+                    return render(request, self.template_name)
+                kwargs['specialization'] = specialization
                 kwargs['license_number'] = request.POST.get('license_number', '')
             elif role == 'NURSE':
                 assigned_doctor_id = request.POST.get('assigned_doctor')
@@ -93,11 +110,13 @@ class AdminUserListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
     
     def get_queryset(self):
         role_filter = self.request.GET.get('role')
-        return AdminService.get_all_users(role=role_filter)
-    
+        search = self.request.GET.get('search', '').strip()
+        return AdminService.get_all_users(role=role_filter, search=search or None)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['role_filter'] = self.request.GET.get('role', '')
+        context['search_query'] = self.request.GET.get('search', '')
         return context
 
 
@@ -160,9 +179,43 @@ class AdminActivityLogView(LoginRequiredMixin, AdminRequiredMixin, ListView):
     template_name = 'admins/admin_activity_log.html'
     context_object_name = 'activities'
     paginate_by = 20
-    
+
     def get_queryset(self):
-        return AdminDashboardService.get_recent_activity()
+        search = self.request.GET.get('search', '').strip() or None
+        date_from = self.request.GET.get('date_from')
+        date_to = self.request.GET.get('date_to')
+        status = self.request.GET.get('status') or None
+
+        if date_from:
+            try:
+                date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+            except ValueError:
+                date_from = None
+        if date_to:
+            try:
+                date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+            except ValueError:
+                date_to = None
+
+        return AdminDashboardService.get_recent_activity(
+            search=search, date_from=date_from, date_to=date_to, status=status
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('search', '')
+        context['date_from'] = self.request.GET.get('date_from', '')
+        context['date_to'] = self.request.GET.get('date_to', '')
+        context['selected_status'] = self.request.GET.get('status', '')
+        context['status_choices'] = [
+            ('', 'All Statuses'),
+            ('WAITING', 'Waiting'),
+            ('IN_PROGRESS', 'In Progress'),
+            ('TERMINATED', 'Completed'),
+            ('NO_SHOW', 'No Show'),
+            ('EMERGENCY', 'Emergency'),
+        ]
+        return context
 
 
 class AdminManageAppointmentsView(LoginRequiredMixin, AdminRequiredMixin, ListView):
@@ -206,6 +259,7 @@ class AdminManageAppointmentsView(LoginRequiredMixin, AdminRequiredMixin, ListVi
             ('CANCELLED', 'Cancelled'),
             ('NO_SHOW', 'No Show'),
         ]
+        context['today'] = timezone.now().date()
         context['selected_doctor'] = self.request.GET.get('doctor', '')
         context['selected_status'] = self.request.GET.get('status', '')
         context['date_from'] = self.request.GET.get('date_from', '')
@@ -215,7 +269,10 @@ class AdminManageAppointmentsView(LoginRequiredMixin, AdminRequiredMixin, ListVi
 
 class AdminCancelAppointmentView(LoginRequiredMixin, AdminRequiredMixin, View):
     def post(self, request, appointment_id):
-        reason = request.POST.get('reason', '')
+        reason = request.POST.get('reason', '').strip()
+        if not reason:
+            messages.error(request, 'A reason is required to cancel an appointment')
+            return redirect('admins:admin_manage_appointments')
         success, message = AdminAppointmentService.cancel_single_appointment(
             appointment_id, reason=reason
         )
@@ -232,7 +289,11 @@ class AdminCancelDoctorAppointmentsView(LoginRequiredMixin, AdminRequiredMixin, 
     def post(self, request):
         doctor_id = request.POST.get('doctor_id')
         date_str = request.POST.get('date')
-        reason = request.POST.get('reason', '')
+        reason = request.POST.get('reason', '').strip()
+
+        if not reason:
+            messages.error(request, 'A reason is required for bulk cancellation')
+            return redirect('admins:admin_manage_appointments')
 
         if not doctor_id:
             messages.error(request, 'Please select a doctor')

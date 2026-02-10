@@ -78,16 +78,24 @@ class AdminService:
             return False, f'Registration failed: {str(e)}'
     
     @staticmethod
-    def get_all_users(role=None):
+    def get_all_users(role=None, search=None):
         """
-        Get all users, optionally filtered by role.
+        Get all users, optionally filtered by role and search query.
         """
         try:
+            from django.db.models import Q
             queryset = User.objects.all().order_by('-created_at')
-            
+
             if role:
                 queryset = queryset.filter(role=role)
-            
+
+            if search:
+                queryset = queryset.filter(
+                    Q(first_name__icontains=search) |
+                    Q(last_name__icontains=search) |
+                    Q(email__icontains=search)
+                )
+
             return queryset
         except Exception as e:
             logger.error(f"Error getting users: {e}")
@@ -254,12 +262,28 @@ class AdminDashboardService:
         }
     
     @staticmethod
-    def get_recent_activity(limit=None):
+    def get_recent_activity(search=None, date_from=None, date_to=None, status=None):
         """Get recent queue activity across all doctors."""
+        from django.db.models import Q
         queryset = PatientQueue.objects.select_related(
             'patient__user', 'queue__doctor__user'
         ).order_by('-id')
-        
+
+        if search:
+            queryset = queryset.filter(
+                Q(patient__user__first_name__icontains=search) |
+                Q(patient__user__last_name__icontains=search) |
+                Q(queue__doctor__user__first_name__icontains=search) |
+                Q(queue__doctor__user__last_name__icontains=search)
+            )
+
+        if date_from:
+            queryset = queryset.filter(check_in_time__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(check_in_time__date__lte=date_to)
+        if status:
+            queryset = queryset.filter(status=status)
+
         return queryset
 
 
@@ -297,6 +321,10 @@ class AdminAppointmentService:
 
             if appointment.status in ('COMPLETED', 'NO_SHOW'):
                 return False, 'Cannot cancel a completed or no-show appointment'
+
+            today = timezone.now().date()
+            if appointment.appointment_date < today:
+                return False, 'Cannot cancel past appointments'
 
             Appointment.objects.filter(pk=appointment_id).update(
                 status='CANCELLED', updated_at=timezone.now()
@@ -354,9 +382,11 @@ class AdminAppointmentService:
         except Doctor.DoesNotExist:
             return False, 'Doctor not found', 0
 
+        today = timezone.now().date()
         queryset = Appointment.objects.filter(
             doctor=doctor,
-            status__in=['SCHEDULED', 'CHECKED_IN']
+            status__in=['SCHEDULED', 'CHECKED_IN'],
+            appointment_date__gte=today,
         )
         if date:
             queryset = queryset.filter(appointment_date=date)

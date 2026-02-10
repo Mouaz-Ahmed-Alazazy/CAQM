@@ -41,38 +41,47 @@
                     <h5 class="mb-0"><i class="fas fa-filter"></i> Filter Appointments</h5>
                 </div>
                 <div class="card-body">
-                    <form method="get" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="doctor" class="form-label">Doctor</label>
-                            <select name="doctor" id="doctor" class="form-select">
-                                <option value="">All Doctors</option>
-                                {% for doctor in doctors %}
-                                <option value="{{ doctor.pk }}" {% if selected_doctor == doctor.pk|stringformat:"d" %}selected{% endif %}>
-                                    Dr. {{ doctor.user.get_full_name }} - {{ doctor.get_specialization_display }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                    <form method="get">
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6 col-md-4">
+                                <label for="doctor" class="form-label">Doctor</label>
+                                <select name="doctor" id="doctor" class="form-select">
+                                    <option value="">All Doctors</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.pk }}" {% if selected_doctor == doctor.pk|stringformat:"d" %}selected{% endif %}>
+                                        Dr. {{ doctor.user.get_full_name }} - {{ doctor.get_specialization_display }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-sm-6 col-md-4">
+                                <label for="status" class="form-label">Status</label>
+                                <select name="status" id="status" class="form-select">
+                                    {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-md-2">
-                            <label for="date_from" class="form-label">From</label>
-                            <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
-                        </div>
-                        <div class="col-md-2">
-                            <label for="date_to" class="form-label">To</label>
-                            <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="status" class="form-label">Status</label>
-                            <select name="status" id="status" class="form-select">
-                                {% for value, label in status_choices %}
-                                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-search"></i> Filter
-                            </button>
+                        <div class="row g-3">
+                            <div class="col-sm-4 col-md-3">
+                                <label for="date_from" class="form-label">From</label>
+                                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+                            </div>
+                            <div class="col-sm-4 col-md-3">
+                                <label for="date_to" class="form-label">To</label>
+                                <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+                            </div>
+                            <div class="col-sm-4 col-md-3 d-flex align-items-end gap-2">
+                                <button type="submit" class="btn btn-primary" aria-label="Apply appointment filters">
+                                    <i class="fas fa-search"></i> Filter
+                                </button>
+                                {% if selected_doctor or selected_status or date_from or date_to %}
+                                <a href="{% url 'admins:admin_manage_appointments' %}" class="btn btn-outline-secondary" aria-label="Clear all appointment filters">
+                                    <i class="fas fa-times"></i> Clear
+                                </a>
+                                {% endif %}
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -97,15 +106,18 @@
                             </select>
                         </div>
                         <div class="mb-2">
-                            <label for="bulk_date" class="form-label">Date (optional)</label>
+                            <label for="bulk_date" class="form-label">
+                                Date (optional)
+                                <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="Leave empty to cancel all future appointments for this doctor. Set a date to cancel only that day's appointments."></i>
+                            </label>
                             <input type="date" name="date" id="bulk_date" class="form-control">
                             <small class="text-muted">Leave empty to cancel all future appointments</small>
                         </div>
                         <div class="mb-2">
-                            <label for="bulk_reason" class="form-label">Reason</label>
-                            <input type="text" name="reason" id="bulk_reason" class="form-control" placeholder="e.g., Doctor unavailable">
+                            <label for="bulk_reason" class="form-label">Reason <span class="text-danger">*</span></label>
+                            <input type="text" name="reason" id="bulk_reason" class="form-control" placeholder="e.g., Doctor unavailable" required>
                         </div>
-                        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#bulkCancelModal">
+                        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#bulkCancelModal" aria-label="Open bulk cancel appointments dialog">
                             <i class="fas fa-exclamation-triangle"></i> Cancel Appointments
                         </button>
                     </form>
@@ -163,16 +175,23 @@
                             </td>
                             <td>
                                 {% if appointment.status == 'SCHEDULED' or appointment.status == 'CHECKED_IN' %}
-                                <button type="button" class="btn btn-sm btn-outline-danger cancel-btn"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#cancelModal"
-                                        data-appointment-id="{{ appointment.id }}"
-                                        data-patient-name="{{ appointment.patient.user.get_full_name }}"
-                                        data-doctor-name="Dr. {{ appointment.doctor.user.get_full_name }}"
-                                        data-date="{{ appointment.appointment_date|date:'M d, Y' }}"
-                                        data-time="{{ appointment.start_time|time:'h:i A' }}">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
+                                    {% if appointment.appointment_date >= today %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger cancel-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#cancelModal"
+                                            data-appointment-id="{{ appointment.id }}"
+                                            data-patient-name="{{ appointment.patient.user.get_full_name }}"
+                                            data-doctor-name="Dr. {{ appointment.doctor.user.get_full_name }}"
+                                            data-date="{{ appointment.appointment_date|date:'M d, Y' }}"
+                                            data-time="{{ appointment.start_time|time:'h:i A' }}"
+                                            aria-label="Cancel appointment for {{ appointment.patient.user.get_full_name }}">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted" title="Cannot cancel past appointments">
+                                        <i class="fas fa-ban"></i> Past
+                                    </span>
+                                    {% endif %}
                                 {% else %}
                                 <span class="text-muted">-</span>
                                 {% endif %}
@@ -226,7 +245,7 @@
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Cancel Appointment</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close cancel appointment dialog"></button>
             </div>
             <form id="cancelForm" method="post">
                 {% csrf_token %}
@@ -239,16 +258,16 @@
                         <p class="mb-0"><strong>Time:</strong> <span id="modal-time"></span></p>
                     </div>
                     <div class="mb-3">
-                        <label for="cancel_reason" class="form-label">Reason for cancellation</label>
-                        <input type="text" name="reason" id="cancel_reason" class="form-control" placeholder="e.g., Doctor unavailable, schedule conflict">
+                        <label for="cancel_reason" class="form-label">Reason for cancellation <span class="text-danger">*</span></label>
+                        <input type="text" name="reason" id="cancel_reason" class="form-control" placeholder="e.g., Doctor unavailable, schedule conflict" required>
                     </div>
                     <div class="alert alert-warning">
                         <i class="fas fa-bell"></i> The patient will be notified and shown recommended alternative appointments.
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Appointment</button>
-                    <button type="submit" class="btn btn-danger"><i class="fas fa-times"></i> Cancel Appointment</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Keep appointment and close dialog">Keep Appointment</button>
+                    <button type="submit" class="btn btn-danger" aria-label="Confirm cancel appointment"><i class="fas fa-times"></i> Cancel Appointment</button>
                 </div>
             </form>
         </div>
@@ -260,7 +279,7 @@
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Confirm Bulk Cancellation</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close bulk cancellation confirmation dialog"></button>
             </div>
             <div class="modal-body">
                 <p class="fw-bold">Are you sure you want to cancel all active appointments for this doctor?</p>
@@ -269,8 +288,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Go Back</button>
-                <button type="button" class="btn btn-danger" id="confirmBulkCancel">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Cancel bulk cancellation and close dialog">Go Back</button>
+                <button type="button" class="btn btn-danger" id="confirmBulkCancel" aria-label="Confirm bulk cancellation of all doctor appointments">
                     <i class="fas fa-ban"></i> Yes, Cancel All
                 </button>
             </div>
@@ -282,6 +301,9 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
+
     $('#cancelModal').on('show.bs.modal', function(event) {
         var button = $(event.relatedTarget);
         var appointmentId = button.data('appointment-id');

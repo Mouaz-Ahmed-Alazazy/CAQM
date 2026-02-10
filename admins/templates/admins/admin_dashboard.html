@@ -14,9 +14,24 @@
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     }
 
+    a.stat-card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        height: 100%;
+    }
+
+    a.stat-card-link:hover {
+        color: inherit;
+    }
+
     .stat-number {
         font-size: 2.5rem;
         font-weight: 700;
+    }
+
+    .stat-card .card-body {
+        padding: 1.5rem;
     }
 
     .nav-card {
@@ -52,10 +67,10 @@
             <p class="text-muted">Queue Management Overview | {{ today|date:"F d, Y" }}</p>
         </div>
         <div class="col-md-4 text-md-end">
-            <a href="{% url 'admin:index' %}" class="btn btn-dark me-2">
+            <a href="{% url 'admin:index' %}" class="btn btn-dark me-2" aria-label="Open Django Admin panel">
                 <i class="fas fa-cog"></i> Django Admin
             </a>
-            <a href="{% url 'admins:admin_register_user' %}" class="btn btn-primary">
+            <a href="{% url 'admins:admin_register_user' %}" class="btn btn-primary" aria-label="Register a new user">
                 <i class="fas fa-user-plus"></i> Add User
             </a>
         </div>
@@ -66,45 +81,55 @@
         <div class="col-12">
             <h5 class="mb-3"><i class="fas fa-users"></i> Registered Users</h5>
         </div>
-        <div class="col-md-2">
-            <div class="card stat-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="stat-number text-secondary">{{ overview.total_users }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-user-circle"></i> Total Users</p>
+        <div class="col-6 col-md mb-3">
+            <a href="{% url 'admins:admin_user_list' %}" class="stat-card-link" aria-label="View all users, total {{ overview.total_users }}">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stat-number text-secondary">{{ overview.total_users }}</div>
+                        <p class="text-muted mb-0"><i class="fas fa-user-circle"></i> Total Users</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
-        <div class="col-md-2">
-            <div class="card stat-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="stat-number text-primary">{{ overview.total_doctors }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-user-md"></i> Doctors</p>
+        <div class="col-6 col-md mb-3">
+            <a href="{% url 'admins:admin_user_list' %}?role=DOCTOR" class="stat-card-link" aria-label="View doctors, total {{ overview.total_doctors }}">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stat-number text-primary">{{ overview.total_doctors }}</div>
+                        <p class="text-muted mb-0"><i class="fas fa-user-md"></i> Doctors</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
-        <div class="col-md-2">
-            <div class="card stat-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="stat-number text-success">{{ overview.total_patients }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-procedures"></i> Patients</p>
+        <div class="col-6 col-md mb-3">
+            <a href="{% url 'admins:admin_user_list' %}?role=PATIENT" class="stat-card-link" aria-label="View patients, total {{ overview.total_patients }}">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stat-number text-success">{{ overview.total_patients }}</div>
+                        <p class="text-muted mb-0"><i class="fas fa-procedures"></i> Patients</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
-        <div class="col-md-2">
-            <div class="card stat-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="stat-number text-info">{{ overview.total_nurses }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-user-nurse"></i> Nurses</p>
+        <div class="col-6 col-md mb-3">
+            <a href="{% url 'admins:admin_user_list' %}?role=NURSE" class="stat-card-link" aria-label="View nurses, total {{ overview.total_nurses }}">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stat-number text-info">{{ overview.total_nurses }}</div>
+                        <p class="text-muted mb-0"><i class="fas fa-user-nurse"></i> Nurses</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
-        <div class="col-md-2">
-            <div class="card stat-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="stat-number text-danger">{{ overview.total_admins }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-user-shield"></i> Admins</p>
+        <div class="col-6 col-md mb-3">
+            <a href="{% url 'admins:admin_user_list' %}?role=ADMIN" class="stat-card-link" aria-label="View admins, total {{ overview.total_admins }}">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stat-number text-danger">{{ overview.total_admins }}</div>
+                        <p class="text-muted mb-0"><i class="fas fa-user-shield"></i> Admins</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
@@ -113,29 +138,35 @@
         <div class="col-12">
             <h5 class="mb-3"><i class="fas fa-clipboard-list"></i> Queues & Appointments</h5>
         </div>
-        <div class="col-md-4">
-            <div class="card stat-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="stat-number text-warning">{{ overview.today_appointments }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-calendar-day"></i> Today's Appointments</p>
+        <div class="col-sm-4 mb-3">
+            <a href="{% url 'admins:admin_manage_appointments' %}" class="stat-card-link" aria-label="Manage today's appointments, total {{ overview.today_appointments }}">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stat-number text-warning">{{ overview.today_appointments }}</div>
+                        <p class="text-muted mb-0"><i class="fas fa-calendar-day"></i> Today's Appointments</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
-        <div class="col-md-4">
-            <div class="card stat-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="stat-number text-danger">{{ overview.active_queues }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-list-ol"></i> Active Queues</p>
+        <div class="col-sm-4 mb-3">
+            <a href="{% url 'admins:admin_queue_stats' %}" class="stat-card-link" aria-label="View queue statistics, active queues {{ overview.active_queues }}">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stat-number text-danger">{{ overview.active_queues }}</div>
+                        <p class="text-muted mb-0"><i class="fas fa-list-ol"></i> Active Queues</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
-        <div class="col-md-4">
-            <div class="card stat-card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <div class="stat-number text-secondary">{{ today_summary.total_in_queues }}</div>
-                    <p class="text-muted mb-0"><i class="fas fa-users-cog"></i> Total in Queues Today</p>
+        <div class="col-sm-4 mb-3">
+            <a href="{% url 'admins:admin_queue_stats' %}" class="stat-card-link" aria-label="View queue statistics, total in queues today {{ today_summary.total_in_queues }}">
+                <div class="card stat-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="stat-number text-secondary">{{ today_summary.total_in_queues }}</div>
+                        <p class="text-muted mb-0"><i class="fas fa-users-cog"></i> Total in Queues Today</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
@@ -181,7 +212,7 @@
             <h4 class="mb-3"><i class="fas fa-compass"></i> Quick Navigation</h4>
         </div>
         <div class="col-md-3 mb-3">
-            <a href="{% url 'admins:admin_queue_stats' %}" class="nav-card">
+            <a href="{% url 'admins:admin_queue_stats' %}" class="nav-card" aria-label="View queue statistics with detailed doctor queue analytics">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-chart-bar text-primary mb-3"></i>
@@ -192,7 +223,7 @@
             </a>
         </div>
         <div class="col-md-3 mb-3">
-            <a href="{% url 'admins:admin_activity_log' %}" class="nav-card">
+            <a href="{% url 'admins:admin_activity_log' %}" class="nav-card" aria-label="View activity log with recent queue activity history">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-stream text-success mb-3"></i>
@@ -203,7 +234,7 @@
             </a>
         </div>
         <div class="col-md-3 mb-3">
-            <a href="{% url 'admins:admin_user_list' %}" class="nav-card">
+            <a href="{% url 'admins:admin_user_list' %}" class="nav-card" aria-label="Manage users to view and manage all users">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-users text-info mb-3"></i>
@@ -214,7 +245,7 @@
             </a>
         </div>
         <div class="col-md-3 mb-3">
-            <a href="{% url 'admins:admin_register_user' %}" class="nav-card">
+            <a href="{% url 'admins:admin_register_user' %}" class="nav-card" aria-label="Register a new user to add new users to the system">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-user-plus text-warning mb-3"></i>
@@ -225,7 +256,7 @@
             </a>
         </div>
         <div class="col-md-3 mb-3">
-            <a href="{% url 'admins:admin_manage_appointments' %}" class="nav-card">
+            <a href="{% url 'admins:admin_manage_appointments' %}" class="nav-card" aria-label="Manage appointments to view, cancel, and manage appointments">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-calendar-alt text-danger mb-3"></i>
