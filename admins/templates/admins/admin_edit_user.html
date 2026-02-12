@@ -1,0 +1,193 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+{% block title %}Edit User Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-user-edit"></i> Edit User Profile</h4>
+                    <span class="badge bg-light text-danger">{{ edit_user.get_role_display }}</span>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="editUserForm" novalidate>
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" required value="{{ edit_user.email }}">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="phone" name="phone" required
+                                       pattern="[0-9]{10,15}" title="Enter 10-15 digits"
+                                       value="{{ edit_user.phone }}">
+                                <div class="invalid-feedback">Enter a valid phone number (10-15 digits).</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required value="{{ edit_user.first_name }}">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required value="{{ edit_user.last_name }}">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date_of_birth" class="form-label">Date of Birth <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required
+                                       value="{% if edit_user.date_of_birth %}{{ edit_user.date_of_birth|date:'Y-m-d' }}{% endif %}">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="gender" class="form-label">Gender <span class="text-danger">*</span></label>
+                                <select class="form-select" id="gender" name="gender" required>
+                                    <option value="MALE" {% if edit_user.gender == 'MALE' %}selected{% endif %}>Male</option>
+                                    <option value="FEMALE" {% if edit_user.gender == 'FEMALE' %}selected{% endif %}>Female</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {% if edit_user.role == 'PATIENT' %}
+                        <h5 class="mt-3">Patient Information</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="emergency_contact" class="form-label">Emergency Contact</label>
+                                <input type="tel" class="form-control" id="emergency_contact"
+                                       name="emergency_contact" pattern="[0-9]{10,15}"
+                                       title="Enter 10-15 digits" value="{% if patient_profile %}{{ patient_profile.emergency_contact }}{% endif %}">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="address" class="form-label">Address</label>
+                                <textarea class="form-control" id="address" name="address" rows="2">{% if patient_profile %}{{ patient_profile.address }}{% endif %}</textarea>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if edit_user.role == 'DOCTOR' %}
+                        <h5 class="mt-3">Doctor Information</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="specialization" class="form-label">Specialization <span class="text-danger">*</span></label>
+                                <select class="form-select" id="specialization" name="specialization" required>
+                                    <option value="">Select Specialization...</option>
+                                    <option value="CARDIOLOGY" {% if doctor_profile and doctor_profile.specialization == 'CARDIOLOGY' %}selected{% endif %}>Cardiology</option>
+                                    <option value="DERMATOLOGY" {% if doctor_profile and doctor_profile.specialization == 'DERMATOLOGY' %}selected{% endif %}>Dermatology</option>
+                                    <option value="GENERAL" {% if doctor_profile and doctor_profile.specialization == 'GENERAL' %}selected{% endif %}>General Medicine</option>
+                                    <option value="NEUROLOGY" {% if doctor_profile and doctor_profile.specialization == 'NEUROLOGY' %}selected{% endif %}>Neurology</option>
+                                    <option value="ORTHOPEDICS" {% if doctor_profile and doctor_profile.specialization == 'ORTHOPEDICS' %}selected{% endif %}>Orthopedics</option>
+                                    <option value="PEDIATRICS" {% if doctor_profile and doctor_profile.specialization == 'PEDIATRICS' %}selected{% endif %}>Pediatrics</option>
+                                    <option value="PSYCHIATRY" {% if doctor_profile and doctor_profile.specialization == 'PSYCHIATRY' %}selected{% endif %}>Psychiatry</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="license_number" class="form-label">License Number</label>
+                                <input type="text" class="form-control" id="license_number" name="license_number" value="{% if doctor_profile %}{{ doctor_profile.license_number }}{% endif %}">
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if edit_user.role == 'NURSE' %}
+                        <h5 class="mt-3">Nurse Information</h5>
+                        <div class="mb-3">
+                            <label for="assigned_doctor" class="form-label">Assigned Doctor (Optional)</label>
+                            <select class="form-select" id="assigned_doctor" name="assigned_doctor">
+                                <option value="">None - Assign Later</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.pk }}" {% if nurse_profile and nurse_profile.assigned_doctor and nurse_profile.assigned_doctor.pk == doctor.pk %}selected{% endif %}>
+                                    Dr. {{ doctor.user.get_full_name }} - {{ doctor.get_specialization_display }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'admins:admin_user_list' %}" class="btn btn-secondary" aria-label="Back to user list">
+                                <i class="fas fa-arrow-left"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-danger" aria-label="Save user profile changes">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date_of_birth').setAttribute('max', today);
+
+    document.getElementById('editUserForm').addEventListener('submit', function (e) {
+        let isValid = true;
+
+        const requiredIds = ['email', 'phone', 'first_name', 'last_name', 'date_of_birth', 'gender'];
+        requiredIds.forEach(function(id) {
+            const el = document.getElementById(id);
+            if (!el || !el.value.trim()) {
+                if (el) {
+                    el.classList.add('is-invalid');
+                    el.classList.remove('is-valid');
+                }
+                isValid = false;
+            } else {
+                el.classList.add('is-valid');
+                el.classList.remove('is-invalid');
+            }
+        });
+
+        const phone = document.getElementById('phone');
+        const phoneRegex = /^[0-9]{10,15}$/;
+        if (phone && phone.value && !phoneRegex.test(phone.value.trim())) {
+            phone.classList.add('is-invalid');
+            phone.classList.remove('is-valid');
+            isValid = false;
+        }
+
+        const emergencyContact = document.getElementById('emergency_contact');
+        if (emergencyContact && emergencyContact.value && !phoneRegex.test(emergencyContact.value.trim())) {
+            emergencyContact.classList.add('is-invalid');
+            emergencyContact.classList.remove('is-valid');
+            isValid = false;
+        }
+
+        const dob = document.getElementById('date_of_birth');
+        if (dob && dob.value > today) {
+            dob.classList.add('is-invalid');
+            dob.classList.remove('is-valid');
+            isValid = false;
+        }
+
+        const specialization = document.getElementById('specialization');
+        if (specialization && !specialization.value) {
+            specialization.classList.add('is-invalid');
+            specialization.classList.remove('is-valid');
+            isValid = false;
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            const firstInvalid = this.querySelector('.is-invalid');
+            if (firstInvalid) {
+                firstInvalid.focus();
+            }
+        }
+    });
+</script>
+{% endblock %}

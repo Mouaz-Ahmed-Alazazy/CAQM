@@ -66,8 +66,7 @@
                                             <strong>Dr. {{ appointment.doctor.user.get_full_name }}</strong>
                                         </td>
                                         <td data-label="Specialization">
-                                            <span class="badge bg-info">{{ appointment.doctor.get_specialization_display
-                                                }}</span>
+                                            <span class="badge bg-info">{{ appointment.doctor.get_specialization_display }}</span>
                                         </td>
                                         <td data-label="Date">{{ appointment.appointment_date|date:"F d, Y" }}</td>
                                         <td data-label="Time">{{ appointment.start_time|time:"h:i A" }}</td>

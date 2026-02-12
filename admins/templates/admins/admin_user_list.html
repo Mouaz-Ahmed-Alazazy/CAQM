@@ -71,6 +71,9 @@
                             </td>
                             <td>{{ user.created_at|date:'Y-m-d' }}</td>
                             <td>
+                                <a href="{% url 'admins:admin_edit_user' user.id %}" class="btn btn-sm btn-primary" aria-label="Edit user {{ user.get_full_name }}">
+                                    <i class="bi bi-pencil-square"></i> Edit
+                                </a>
                                 {% if user.id != request.user.id %}
                                 <button type="button" class="btn btn-sm btn-danger delete-user-btn"
                                         data-bs-toggle="modal"
