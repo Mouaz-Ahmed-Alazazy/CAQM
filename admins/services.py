@@ -247,13 +247,13 @@ class AdminDashboardService:
         # Calculate average queue duration
         total_duration_minutes = 0
         queue_count_with_duration = 0
-        
+
         for queue in past_queues:
             last_patient = queue.patient_queues.filter(
-                status='TERMINATED', 
+                status='TERMINATED',
                 consultation_end_time__isnull=False
             ).order_by('-consultation_end_time').first()
-            
+
             if last_patient and last_patient.consultation_end_time:
                 # Duration from queue creation to last patient finished
                 duration = last_patient.consultation_end_time - queue.created_at
@@ -261,8 +261,9 @@ class AdminDashboardService:
                 if duration_minutes > 0:
                     total_duration_minutes += duration_minutes
                     queue_count_with_duration += 1
-        
-        avg_duration = round(total_duration_minutes / queue_count_with_duration) if queue_count_with_duration > 0 else 0
+
+        avg_duration = round(
+            total_duration_minutes / queue_count_with_duration) if queue_count_with_duration > 0 else 0
 
         return {
             'total_booked': total_booked,
@@ -290,20 +291,21 @@ class AdminDashboardService:
                 'duration_minutes': 0,
                 'completion_rate': 0,
             }
-        
+
         patient_queues = PatientQueue.objects.filter(queue=today_queue)
-        
+
         total = patient_queues.count()
         completed = patient_queues.filter(status='TERMINATED').count()
-        
+
         # Calculate current duration
         duration_minutes = 0
         if today_queue.created_at:
             duration = timezone.now() - today_queue.created_at
             duration_minutes = int(duration.total_seconds() / 60)
-            
-        completion_rate = round((completed / total * 100), 1) if total > 0 else 0
-        
+
+        completion_rate = round(
+            (completed / total * 100), 1) if total > 0 else 0
+
         return {
             'has_queue': True,
             'queue_id': today_queue.pk,
@@ -326,7 +328,7 @@ class AdminDashboardService:
             appointment_date__lte=date_to,
             status__in=['SCHEDULED', 'CHECKED_IN']
         )
-        
+
         return {
             'scheduled_appointments': future_appointments.count(),
             'next_7_days': future_appointments.filter(
