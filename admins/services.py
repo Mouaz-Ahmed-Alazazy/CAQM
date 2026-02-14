@@ -231,7 +231,7 @@ class AdminDashboardService:
             doctor=doctor,
             date__gte=date_from,
             date__lt=today
-        )
+        ).prefetch_related('patient_queues')
 
         past_patient_queues = PatientQueue.objects.filter(
             queue__in=past_queues
@@ -244,12 +244,33 @@ class AdminDashboardService:
         completion_rate = round(
             (completed / total_booked * 100), 1) if total_booked > 0 else 0
 
+        # Calculate average queue duration
+        total_duration_minutes = 0
+        queue_count_with_duration = 0
+        
+        for queue in past_queues:
+            last_patient = queue.patient_queues.filter(
+                status='TERMINATED', 
+                consultation_end_time__isnull=False
+            ).order_by('-consultation_end_time').first()
+            
+            if last_patient and last_patient.consultation_end_time:
+                # Duration from queue creation to last patient finished
+                duration = last_patient.consultation_end_time - queue.created_at
+                duration_minutes = duration.total_seconds() / 60
+                if duration_minutes > 0:
+                    total_duration_minutes += duration_minutes
+                    queue_count_with_duration += 1
+        
+        avg_duration = round(total_duration_minutes / queue_count_with_duration) if queue_count_with_duration > 0 else 0
+
         return {
             'total_booked': total_booked,
             'completed': completed,
             'no_shows': no_shows,
             'completion_rate': completion_rate,
             'queue_days': past_queues.count(),
+            'avg_duration_minutes': avg_duration,
         }
 
     @staticmethod
@@ -266,19 +287,34 @@ class AdminDashboardService:
                 'no_shows': 0,
                 'emergency': 0,
                 'total': 0,
+                'duration_minutes': 0,
+                'completion_rate': 0,
             }
-
+        
         patient_queues = PatientQueue.objects.filter(queue=today_queue)
-
+        
+        total = patient_queues.count()
+        completed = patient_queues.filter(status='TERMINATED').count()
+        
+        # Calculate current duration
+        duration_minutes = 0
+        if today_queue.created_at:
+            duration = timezone.now() - today_queue.created_at
+            duration_minutes = int(duration.total_seconds() / 60)
+            
+        completion_rate = round((completed / total * 100), 1) if total > 0 else 0
+        
         return {
             'has_queue': True,
             'queue_id': today_queue.pk,
             'waiting': patient_queues.filter(status='WAITING').count(),
             'in_progress': patient_queues.filter(status='IN_PROGRESS').count(),
-            'completed': patient_queues.filter(status='TERMINATED').count(),
+            'completed': completed,
             'no_shows': patient_queues.filter(status='NO_SHOW').count(),
             'emergency': patient_queues.filter(status='EMERGENCY').count(),
-            'total': patient_queues.count(),
+            'total': total,
+            'duration_minutes': duration_minutes,
+            'completion_rate': completion_rate,
         }
 
     @staticmethod
@@ -290,7 +326,7 @@ class AdminDashboardService:
             appointment_date__lte=date_to,
             status__in=['SCHEDULED', 'CHECKED_IN']
         )
-
+        
         return {
             'scheduled_appointments': future_appointments.count(),
             'next_7_days': future_appointments.filter(

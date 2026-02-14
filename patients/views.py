@@ -27,8 +27,18 @@ logger = logging.getLogger(__name__)
 class PatientRequiredMixin(UserPassesTestMixin):
     """Mixin to ensure only patients can access the view"""
     
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user.role == 'PATIENT':
+            try:
+                # Ensure patient profile exists
+                _ = request.user.patient_profile
+            except:
+                from .models import Patient
+                Patient.objects.create(user=request.user)
+        return super().dispatch(request, *args, **kwargs)
+
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.is_patient()
+        return self.request.user.is_authenticated and self.request.user.role == 'PATIENT'
     
     def handle_no_permission(self):
         messages.error(self.request, 'Only patients can access this page')

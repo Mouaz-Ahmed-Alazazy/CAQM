@@ -186,6 +186,7 @@
                                             <th class="text-center">Total Booked</th>
                                             <th class="text-center">Completed</th>
                                             <th class="text-center">No Shows</th>
+                                            <th class="text-center">Avg Duration</th>
                                             <th class="text-center">Completion Rate</th>
                                         </tr>
                                     </thead>
@@ -197,6 +198,7 @@
                                             <td class="text-center"><span class="badge bg-primary">{{ stat.past.total_booked }}</span></td>
                                             <td class="text-center"><span class="badge bg-success">{{ stat.past.completed }}</span></td>
                                             <td class="text-center"><span class="badge bg-danger">{{ stat.past.no_shows }}</span></td>
+                                            <td class="text-center"><span class="badge bg-info">{{ stat.past.avg_duration_minutes }} min</span></td>
                                             <td class="text-center">
                                                 <div class="d-flex align-items-center justify-content-center">
                                                     <div class="progress progress-thin flex-grow-1 me-2"
@@ -241,6 +243,21 @@
                                                 </div>
                                             </div>
                                             <hr>
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between small mb-1">
+                                                    <span>Queue Progress</span>
+                                                    <span>{{ stat.today.completion_rate }}%</span>
+                                                </div>
+                                                <div class="progress progress-thin">
+                                                    <div class="progress-bar bg-success" role="progressbar" 
+                                                         style="width: {{ stat.today.completion_rate }}%" 
+                                                         aria-valuenow="{{ stat.today.completion_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex justify-content-between small text-muted mb-2">
+                                                <span><i class="fas fa-stopwatch"></i> Active: {{ stat.today.duration_minutes }} min</span>
+                                                <span><i class="fas fa-users"></i> Total: {{ stat.today.total }}</span>
+                                            </div>
                                             <div class="d-flex justify-content-between small">
                                                 <span><i class="fas fa-exclamation-triangle text-danger"></i> {{ stat.today.no_shows }} No Shows</span>
                                                 <span><i class="fas fa-ambulance text-info"></i> {{ stat.today.emergency }} Emergency</span>
