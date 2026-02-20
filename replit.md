@@ -77,6 +77,15 @@ The admin dashboard (`/admins/`) provides comprehensive queue management:
 - Password: admin123456
 
 ## Recent Changes
+- February 20, 2026: Enhanced admin queue management
+  - Queue Stats page now shows Previous, Current, and Upcoming queues per doctor
+  - Doctor filter dropdown to view queues for individual doctors
+  - Previous Queues: per-day accordion with booked, completed, no-shows, urgent counts + actual vs estimated time
+  - Current Queues: cards with waiting, in-progress, completed, pending (not checked in), urgent counts
+  - Upcoming Queues: patient list with appointment dates, times, and urgent flagging
+  - Expandable patient detail sections in all queue views (name, status, check-in time, wait time, consultation duration)
+  - Progress bars preserved in all views
+  - Pending patients derived from appointments not yet checked into the queue
 - February 10, 2026: Comprehensive admin UX improvements
   - Critical fix: Blocked cancellation of past appointments (service-layer date check + template-level guard)
   - Register User form: email duplicate check, phone regex validation, password strength meter & confirmation, required specialization for doctors
