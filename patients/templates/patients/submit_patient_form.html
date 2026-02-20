@@ -17,20 +17,100 @@
                     {% csrf_token %}
 
                     <div class="mb-3">
-                        <label for="chief_complaint" class="form-label">Chief Complaint <span
-                                class="text-danger">*</span></label>
-                        <textarea class="form-control" id="chief_complaint" name="chief_complaint" rows="3"
-                            placeholder="Main reason for your visit..."
-                            required>{{ patient_form.chief_complaint }}</textarea>
-                        <small class="text-muted">Describe your main health concern</small>
+                        <label class="form-label">Common Symptoms <span class="text-danger">*</span></label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="symptoms" value="Fever" id="symptom_fever" {% if "Fever" in patient_form.symptoms %}checked{% endif %}>
+                                    <label class="form-check-label" for="symptom_fever">Fever</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="symptoms" value="Headache" id="symptom_headache" {% if "Headache" in patient_form.symptoms %}checked{% endif %}>
+                                    <label class="form-check-label" for="symptom_headache">Headache</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="symptoms" value="Cough" id="symptom_cough" {% if "Cough" in patient_form.symptoms %}checked{% endif %}>
+                                    <label class="form-check-label" for="symptom_cough">Cough</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="symptoms" value="Fatigue" id="symptom_fatigue" {% if "Fatigue" in patient_form.symptoms %}checked{% endif %}>
+                                    <label class="form-check-label" for="symptom_fatigue">Fatigue</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="symptoms" value="Shortness of Breath" id="symptom_sob" {% if "Shortness of Breath" in patient_form.symptoms %}checked{% endif %}>
+                                    <label class="form-check-label" for="symptom_sob">Shortness of Breath</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="symptoms" value="Chest Pain" id="symptom_chestpain" {% if "Chest Pain" in patient_form.symptoms %}checked{% endif %}>
+                                    <label class="form-check-label" for="symptom_chestpain">Chest Pain</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="symptoms" value="Nausea" id="symptom_nausea" {% if "Nausea" in patient_form.symptoms %}checked{% endif %}>
+                                    <label class="form-check-label" for="symptom_nausea">Nausea</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="symptoms" value="Dizziness" id="symptom_dizziness" {% if "Dizziness" in patient_form.symptoms %}checked{% endif %}>
+                                    <label class="form-check-label" for="symptom_dizziness">Dizziness</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="medical_history" class="form-label">Medical History</label>
-                        <textarea class="form-control" id="medical_history" name="medical_history" rows="4"
-                            placeholder="Past medical conditions, surgeries, etc...">{{ patient_form.medical_history }}</textarea>
-                        <small class="text-muted">Include any chronic conditions, past surgeries, or significant
-                            medical events</small>
+                        <label for="chief_complaint" class="form-label">Other / Specific Details</label>
+                        <textarea class="form-control" id="chief_complaint" name="chief_complaint" rows="3"
+                            placeholder="Detailed description or other symptoms...">{{ patient_form.chief_complaint }}</textarea>
+                        <small class="text-muted">Describe your main health concern if not listed above</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Medical History</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="medical_history_options" value="Diabetes" id="history_diabetes" {% if patient_form and "Diabetes" in patient_form.medical_history_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="history_diabetes">Diabetes</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="medical_history_options" value="Hypertension" id="history_hypertension" {% if patient_form and "Hypertension" in patient_form.medical_history_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="history_hypertension">Hypertension</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="medical_history_options" value="Asthma" id="history_asthma" {% if patient_form and "Asthma" in patient_form.medical_history_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="history_asthma">Asthma</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="medical_history_options" value="Heart Disease" id="history_heart" {% if patient_form and "Heart Disease" in patient_form.medical_history_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="history_heart">Heart Disease</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="medical_history_options" value="Kidney Disease" id="history_kidney" {% if patient_form and "Kidney Disease" in patient_form.medical_history_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="history_kidney">Kidney Disease</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="medical_history_options" value="Thyroid Disorder" id="history_thyroid" {% if patient_form and "Thyroid Disorder" in patient_form.medical_history_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="history_thyroid">Thyroid Disorder</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="medical_history_options" value="Cancer" id="history_cancer" {% if patient_form and "Cancer" in patient_form.medical_history_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="history_cancer">Cancer</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="medical_history_options" value="Surgery History" id="history_surgery" {% if patient_form and "Surgery History" in patient_form.medical_history_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="history_surgery">Surgery History</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <label for="medical_history" class="form-label">Other / Details</label>
+                            <textarea class="form-control" id="medical_history" name="medical_history" rows="3"
+                                placeholder="Past conditions, surgeries, or details not listed above...">{{ patient_form.medical_history }}</textarea>
+                            <small class="text-muted">Add details or conditions not listed above</small>
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -41,10 +121,51 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="allergies" class="form-label">Allergies</label>
-                        <textarea class="form-control" id="allergies" name="allergies" rows="3"
-                            placeholder="Any known allergies (medications, food, environmental)...">{{ patient_form.allergies }}</textarea>
-                        <small class="text-muted">Include all known allergies and reactions</small>
+                        <label class="form-label">Allergies</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="allergy_options" value="Penicillin" id="allergy_penicillin" {% if patient_form and "Penicillin" in patient_form.allergy_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="allergy_penicillin">Penicillin</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="allergy_options" value="Other Antibiotics" id="allergy_antibiotics" {% if patient_form and "Other Antibiotics" in patient_form.allergy_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="allergy_antibiotics">Other Antibiotics</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="allergy_options" value="NSAIDs" id="allergy_nsaids" {% if patient_form and "NSAIDs" in patient_form.allergy_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="allergy_nsaids">NSAIDs</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="allergy_options" value="Latex" id="allergy_latex" {% if patient_form and "Latex" in patient_form.allergy_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="allergy_latex">Latex</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="allergy_options" value="Pollen" id="allergy_pollen" {% if patient_form and "Pollen" in patient_form.allergy_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="allergy_pollen">Pollen</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="allergy_options" value="Dust" id="allergy_dust" {% if patient_form and "Dust" in patient_form.allergy_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="allergy_dust">Dust</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="allergy_options" value="Peanuts" id="allergy_peanuts" {% if patient_form and "Peanuts" in patient_form.allergy_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="allergy_peanuts">Peanuts</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="allergy_options" value="Seafood" id="allergy_seafood" {% if patient_form and "Seafood" in patient_form.allergy_options %}checked{% endif %}>
+                                    <label class="form-check-label" for="allergy_seafood">Seafood</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <label for="allergies" class="form-label">Other / Details</label>
+                            <textarea class="form-control" id="allergies" name="allergies" rows="3"
+                                placeholder="Allergy details not listed above...">{{ patient_form.allergies }}</textarea>
+                            <small class="text-muted">Include any reactions or details</small>
+                        </div>
                     </div>
 
                     <div class="alert alert-info">

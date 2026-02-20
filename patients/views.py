@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class PatientRequiredMixin(UserPassesTestMixin):
     """Mixin to ensure only patients can access the view"""
-    
+
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated and request.user.role == 'PATIENT':
             try:
@@ -39,7 +39,7 @@ class PatientRequiredMixin(UserPassesTestMixin):
 
     def test_func(self):
         return self.request.user.is_authenticated and self.request.user.role == 'PATIENT'
-    
+
     def handle_no_permission(self):
         messages.error(self.request, 'Only patients can access this page')
         return redirect('accounts:login')
@@ -54,7 +54,7 @@ class HomePageView(LoginRequiredMixin, PatientRequiredMixin, ListView):
     def get_queryset(self):
         """Get all doctors"""
         return Doctor.objects.select_related('user').prefetch_related('availability').all()
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['doctors'] = self.get_queryset()
@@ -75,39 +75,41 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
         initial = super().get_initial()
         if 'doctor' in self.request.GET:
             initial['doctor'] = self.request.GET.get('doctor')
-        
+
         if 'date' in self.request.GET:
             try:
-                initial['appointment_date'] = datetime.strptime(self.request.GET.get('date'), '%Y-%m-%d').date()
+                initial['appointment_date'] = datetime.strptime(
+                    self.request.GET.get('date'), '%Y-%m-%d').date()
             except (ValueError, TypeError):
                 pass
-                
+
         return initial
-    
+
     def get_form(self, form_class=None):
         """Customize the form inline"""
         form = super().get_form(form_class)
-        
+
         # Customize doctor field
         form.fields['doctor'].queryset = Doctor.objects.all()
         form.fields['doctor'].label_from_instance = lambda obj: f"Dr. {obj.user.get_full_name()} - {obj.get_specialization_display()}"
         form.fields['doctor'].widget.attrs.update({'class': 'form-control'})
-        
+
         # Customize date field
         form.fields['appointment_date'].widget = forms.DateInput(attrs={
             'class': 'form-control',
             'type': 'date',
             'min': timezone.now().date().isoformat()
         })
-        
+
         # Customize time field as select (will be populated via AJAX)
         form.fields['start_time'].widget = forms.Select(attrs={
             'class': 'form-control',
             'id': 'timeSlotSelect'
         })
-        form.fields['start_time'].choices = [('', 'Select date and doctor first')]
+        form.fields['start_time'].choices = [
+            ('', 'Select date and doctor first')]
         form.fields['start_time'].required = True
-        
+
         # Customize notes field
         form.fields['notes'].widget = forms.Textarea(attrs={
             'class': 'form-control',
@@ -115,9 +117,9 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
             'placeholder': 'Any specific concerns or notes...'
         })
         form.fields['notes'].required = False
-        
+
         return form
-    
+
     def form_valid(self, form):
         """Handle successful booking"""
         patient = self.request.user.patient_profile
@@ -125,7 +127,7 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
         appointment_date = form.cleaned_data['appointment_date']
         start_time = form.cleaned_data['start_time']
         notes = form.cleaned_data.get('notes', '')
-        
+
         # Use AppointmentService to book
         success, result = AppointmentService.book_appointment(
             patient=patient,
@@ -134,9 +136,10 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
             start_time=start_time,
             notes=notes
         )
-        
+
         if success:
-            self._send_notifications(doctor, patient, appointment_date, start_time)
+            self._send_notifications(
+                doctor, patient, appointment_date, start_time)
             messages.success(self.request, 'Appointment booked successfully!')
             return redirect(self.success_url)
         else:
@@ -160,7 +163,7 @@ class BookAppointmentView(LoginRequiredMixin, PatientRequiredMixin, CreateView):
             )
         except Exception as e:
             logger.error(f"Failed to send booking notifications: {e}")
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['doctors'] = Doctor.objects.all()
@@ -173,8 +176,7 @@ class MyAppointmentsView(LoginRequiredMixin, PatientRequiredMixin, ListView):
     template_name = 'patients/my_appointments.html'
     context_object_name = 'upcoming_appointments'
     paginate_by = 10  # Add pagination
-    
-    
+
     def get_queryset(self):
         """Get only upcoming appointments with related data and filtering"""
         queryset = Appointment.objects.filter(
@@ -182,23 +184,26 @@ class MyAppointmentsView(LoginRequiredMixin, PatientRequiredMixin, ListView):
             status__in=['SCHEDULED', 'CHECKED_IN'],
             appointment_date__gte=timezone.now().date()
         ).select_related('doctor__user', 'patient__user')
-        
+
         # Apply filters
         self.form = AppointmentFilterForm(self.request.GET)
         if self.form.is_valid():
             if self.form.cleaned_data.get('doctor'):
-                queryset = queryset.filter(doctor=self.form.cleaned_data['doctor'])
+                queryset = queryset.filter(
+                    doctor=self.form.cleaned_data['doctor'])
             if self.form.cleaned_data.get('date_from'):
-                queryset = queryset.filter(appointment_date__gte=self.form.cleaned_data['date_from'])
+                queryset = queryset.filter(
+                    appointment_date__gte=self.form.cleaned_data['date_from'])
             if self.form.cleaned_data.get('date_to'):
-                queryset = queryset.filter(appointment_date__lte=self.form.cleaned_data['date_to'])
-                
+                queryset = queryset.filter(
+                    appointment_date__lte=self.form.cleaned_data['date_to'])
+
         return queryset.order_by('appointment_date', 'start_time')
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['filter_form'] = self.form
-        
+
         # Filter past appointments as well if needed, currently just showing last 10
         context['past_appointments'] = Appointment.objects.filter(
             patient=self.request.user.patient_profile,
@@ -207,7 +212,7 @@ class MyAppointmentsView(LoginRequiredMixin, PatientRequiredMixin, ListView):
             'doctor__user'  # Prevent N+1 queries
         ).order_by('-appointment_date', '-start_time')[:10]
         return context
-    
+
     def post(self, request, *args, **kwargs):
         """Handle bulk appointment cancellation"""
         appointment_ids = request.POST.getlist('appointment_ids')
@@ -217,19 +222,20 @@ class MyAppointmentsView(LoginRequiredMixin, PatientRequiredMixin, ListView):
                 patient=request.user.patient_profile,
                 status='SCHEDULED'
             ).update(status='CANCELLED')
-            
+
             if deleted_count > 0:
-                messages.success(request, f'{deleted_count} appointment(s) cancelled successfully')
+                messages.success(
+                    request, f'{deleted_count} appointment(s) cancelled successfully')
             else:
                 messages.warning(request, 'No appointments were cancelled')
-        
+
         return redirect('patients:my_appointments')
 
 
 class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
     """Modify existing appointment."""
     template_name = 'patients/modify_appointment.html'
-    
+
     def get(self, request, pk):
         try:
             appointment = get_object_or_404(
@@ -242,7 +248,7 @@ class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
         except Exception as e:
             messages.error(request, f'Error loading appointment: {str(e)}')
             return redirect('patients:my_appointments')
-    
+
     def post(self, request, pk):
         try:
             appointment = get_object_or_404(
@@ -251,14 +257,16 @@ class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
                 patient=request.user.patient_profile,
                 status='SCHEDULED'
             )
-            
+
             new_date_str = request.POST.get('appointment_date')
             new_time_str = request.POST.get('start_time')
             notes = request.POST.get('notes', '')
-            
-            new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date() if new_date_str else None
-            new_time = datetime.strptime(new_time_str, '%H:%M').time() if new_time_str else None
-            
+
+            new_date = datetime.strptime(
+                new_date_str, '%Y-%m-%d').date() if new_date_str else None
+            new_time = datetime.strptime(
+                new_time_str, '%H:%M').time() if new_time_str else None
+
             success, result = AppointmentService.modify_appointment(
                 pk,
                 request.user.patient_profile,
@@ -266,7 +274,7 @@ class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
                 new_time=new_time,
                 notes=notes
             )
-            
+
             if success:
                 NotificationService.send_booking_confirmation(
                     request.user,
@@ -279,11 +287,11 @@ class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
             else:
                 messages.error(request, result)
                 return self.render_form(request, appointment)
-                
+
         except Exception as e:
             messages.error(request, f'Error modifying appointment: {str(e)}')
             return redirect('patients:my_appointments')
-    
+
     def render_form(self, request, appointment):
         context = {
             'appointment': appointment,
@@ -294,64 +302,80 @@ class ModifyAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
 
 class CancelAppointmentView(LoginRequiredMixin, PatientRequiredMixin, View):
     """Cancel existing appointment."""
-    
+
     def post(self, request, pk):
         try:
             success, message = AppointmentService.cancel_appointment(
                 pk,
                 request.user.patient_profile
             )
-            
+
             if success:
                 messages.success(request, message)
             else:
                 messages.error(request, message)
-                
+
         except Exception as e:
             messages.error(request, f'Error cancelling appointment: {str(e)}')
-        
+
         return redirect('patients:my_appointments')
 
 
 class SubmitPatientFormView(LoginRequiredMixin, PatientRequiredMixin, View):
     """Submit medical history form."""
     template_name = 'patients/submit_patient_form.html'
-    
+
     def get(self, request):
-        patient_form = PatientForm.objects.filter(patient=request.user.patient_profile).first()
+        patient_form = PatientForm.objects.filter(
+            patient=request.user.patient_profile).first()
         return render(request, self.template_name, {'patient_form': patient_form})
-    
+
     def post(self, request):
         try:
             chief_complaint = request.POST.get('chief_complaint', '')
             medical_history = request.POST.get('medical_history', '')
             current_medications = request.POST.get('current_medications', '')
             allergies = request.POST.get('allergies', '')
-            
-            if not chief_complaint:
-                messages.error(request, 'Chief complaint is required')
-                patient_form = PatientForm.objects.filter(patient=request.user.patient_profile).first()
+            symptoms_list = request.POST.getlist('symptoms')
+            symptoms = ', '.join(symptoms_list)
+            medical_history_list = request.POST.getlist(
+                'medical_history_options')
+            medical_history_options = ', '.join(medical_history_list)
+            allergy_list = request.POST.getlist('allergy_options')
+            allergy_options = ', '.join(allergy_list)
+
+            if not chief_complaint and not symptoms:
+                messages.error(
+                    request, 'Please select at least one symptom or describe your complaint.')
+                patient_form = PatientForm.objects.filter(
+                    patient=request.user.patient_profile).first()
                 return render(request, self.template_name, {'patient_form': patient_form})
-            
+
             success, result = PatientFormService.submit_form(
                 request.user.patient_profile,
                 chief_complaint,
+                symptoms,
                 medical_history,
                 current_medications,
-                allergies
+                allergies,
+                medical_history_options,
+                allergy_options
             )
-            
+
             if success:
-                messages.success(request, 'Medical form submitted successfully')
+                messages.success(
+                    request, 'Medical form submitted successfully')
                 return redirect('patients:my_appointments')
             else:
                 messages.error(request, result)
-                patient_form = PatientForm.objects.filter(patient=request.user.patient_profile).first()
+                patient_form = PatientForm.objects.filter(
+                    patient=request.user.patient_profile).first()
                 return render(request, self.template_name, {'patient_form': patient_form})
-                
+
         except Exception as e:
             messages.error(request, f'Error submitting form: {str(e)}')
-            patient_form = PatientForm.objects.filter(patient=request.user.patient_profile).first()
+            patient_form = PatientForm.objects.filter(
+                patient=request.user.patient_profile).first()
             return render(request, self.template_name, {'patient_form': patient_form})
 
 
