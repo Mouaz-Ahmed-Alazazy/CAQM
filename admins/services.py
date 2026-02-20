@@ -196,10 +196,10 @@ class AdminDashboardService:
         }
 
     @staticmethod
-    def get_doctor_queue_stats(date_from=None, date_to=None):
+    def get_doctor_queue_stats(date_from=None, date_to=None, doctor_id=None):
         """
-        Get comprehensive queue statistics for all doctors.
-        Returns past, present, and future queue data.
+        Get comprehensive queue statistics for all doctors (or a single doctor).
+        Returns past, present, and future queue data with patient details.
         """
         today = timezone.now().date()
 
@@ -208,12 +208,17 @@ class AdminDashboardService:
         if date_to is None:
             date_to = today + timedelta(days=30)
 
-        doctors = Doctor.objects.select_related('user').all()
+        if doctor_id:
+            doctors = Doctor.objects.select_related('user').filter(pk=doctor_id)
+        else:
+            doctors = Doctor.objects.select_related('user').all()
+
         doctor_stats = []
 
         for doctor in doctors:
             stats = {
                 'doctor': doctor,
+                'doctor_id': doctor.pk,
                 'doctor_name': f"Dr. {doctor.user.get_full_name()}",
                 'specialization': doctor.get_specialization_display(),
                 'past': AdminDashboardService._get_past_stats(doctor, date_from, today),
@@ -226,114 +231,228 @@ class AdminDashboardService:
 
     @staticmethod
     def _get_past_stats(doctor, date_from, today):
-        """Get past queue statistics for a doctor."""
+        """Get past queue statistics for a doctor with patient details."""
         past_queues = Queue.objects.filter(
             doctor=doctor,
             date__gte=date_from,
             date__lt=today
-        ).prefetch_related('patient_queues')
+        ).prefetch_related('patient_queues', 'patient_queues__patient__user').order_by('-date')
 
         past_patient_queues = PatientQueue.objects.filter(
             queue__in=past_queues
-        )
+        ).select_related('patient__user', 'queue')
 
         total_booked = past_patient_queues.count()
         completed = past_patient_queues.filter(status='TERMINATED').count()
         no_shows = past_patient_queues.filter(status='NO_SHOW').count()
+        urgent = past_patient_queues.filter(is_emergency=True).count()
 
         completion_rate = round(
             (completed / total_booked * 100), 1) if total_booked > 0 else 0
 
-        # Calculate average queue duration
-        total_duration_minutes = 0
+        total_actual_minutes = 0
+        total_estimated_minutes = 0
         queue_count_with_duration = 0
 
+        queue_details = []
         for queue in past_queues:
-            last_patient = queue.patient_queues.filter(
-                status='TERMINATED',
-                consultation_end_time__isnull=False
-            ).order_by('-consultation_end_time').first()
+            pqs = queue.patient_queues.all()
+            q_total = pqs.count()
+            q_completed = len([p for p in pqs if p.status == 'TERMINATED'])
+            q_no_shows = len([p for p in pqs if p.status == 'NO_SHOW'])
+            q_urgent = len([p for p in pqs if p.is_emergency])
+
+            total_est = sum(p.estimated_time for p in pqs)
+
+            last_patient = None
+            actual_minutes = 0
+            for p in sorted(pqs, key=lambda x: x.consultation_end_time or timezone.now(), reverse=True):
+                if p.status == 'TERMINATED' and p.consultation_end_time:
+                    last_patient = p
+                    break
 
             if last_patient and last_patient.consultation_end_time:
-                # Duration from queue creation to last patient finished
                 duration = last_patient.consultation_end_time - queue.created_at
-                duration_minutes = duration.total_seconds() / 60
-                if duration_minutes > 0:
-                    total_duration_minutes += duration_minutes
-                    queue_count_with_duration += 1
+                actual_minutes = max(0, int(duration.total_seconds() / 60))
+                total_actual_minutes += actual_minutes
+                total_estimated_minutes += total_est
+                queue_count_with_duration += 1
 
-        avg_duration = round(
-            total_duration_minutes / queue_count_with_duration) if queue_count_with_duration > 0 else 0
+            patients_list = []
+            for pq in pqs:
+                patients_list.append({
+                    'name': pq.patient.user.get_full_name(),
+                    'status': pq.get_status_display(),
+                    'status_raw': pq.status,
+                    'position': pq.position,
+                    'is_emergency': pq.is_emergency,
+                    'estimated_time': pq.estimated_time,
+                    'consultation_duration': pq.get_consultation_duration(),
+                    'check_in_time': pq.check_in_time,
+                })
+
+            queue_details.append({
+                'date': queue.date,
+                'queue_id': queue.pk,
+                'total': q_total,
+                'completed': q_completed,
+                'no_shows': q_no_shows,
+                'urgent': q_urgent,
+                'actual_minutes': actual_minutes,
+                'estimated_minutes': total_est,
+                'patients': patients_list,
+            })
+
+        avg_actual = round(total_actual_minutes / queue_count_with_duration) if queue_count_with_duration > 0 else 0
+        avg_estimated = round(total_estimated_minutes / queue_count_with_duration) if queue_count_with_duration > 0 else 0
 
         return {
             'total_booked': total_booked,
             'completed': completed,
             'no_shows': no_shows,
+            'urgent': urgent,
             'completion_rate': completion_rate,
             'queue_days': past_queues.count(),
-            'avg_duration_minutes': avg_duration,
+            'avg_duration_minutes': avg_actual,
+            'avg_estimated_minutes': avg_estimated,
+            'queue_details': queue_details,
         }
 
     @staticmethod
     def _get_today_stats(doctor, today):
-        """Get today's queue statistics for a doctor."""
+        """Get today's queue statistics for a doctor with patient details."""
         today_queue = Queue.objects.filter(doctor=doctor, date=today).first()
 
+        today_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            appointment_date=today,
+            status__in=['SCHEDULED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED']
+        ).select_related('patient__user')
+
+        total_booked = today_appointments.count()
+
         if not today_queue:
+            pending_patients = []
+            for appt in today_appointments:
+                pending_patients.append({
+                    'name': appt.patient.user.get_full_name(),
+                    'status': 'Pending',
+                    'status_raw': 'PENDING',
+                    'appointment_time': appt.start_time,
+                    'is_emergency': False,
+                })
+
             return {
                 'has_queue': False,
+                'total_booked': total_booked,
                 'waiting': 0,
                 'in_progress': 0,
                 'completed': 0,
+                'pending': total_booked,
                 'no_shows': 0,
                 'emergency': 0,
                 'total': 0,
                 'duration_minutes': 0,
                 'completion_rate': 0,
+                'patients': pending_patients,
             }
 
-        patient_queues = PatientQueue.objects.filter(queue=today_queue)
+        patient_queues = PatientQueue.objects.filter(
+            queue=today_queue
+        ).select_related('patient__user')
 
-        total = patient_queues.count()
+        total_in_queue = patient_queues.count()
         completed = patient_queues.filter(status='TERMINATED').count()
 
-        # Calculate current duration
+        checked_in_patient_ids = set(patient_queues.values_list('patient_id', flat=True))
+        pending_appointments = today_appointments.exclude(
+            patient_id__in=checked_in_patient_ids
+        ).filter(status='SCHEDULED')
+        pending_count = pending_appointments.count()
+
         duration_minutes = 0
         if today_queue.created_at:
             duration = timezone.now() - today_queue.created_at
             duration_minutes = int(duration.total_seconds() / 60)
 
         completion_rate = round(
-            (completed / total * 100), 1) if total > 0 else 0
+            (completed / total_in_queue * 100), 1) if total_in_queue > 0 else 0
+
+        patients_list = []
+        for pq in patient_queues:
+            patients_list.append({
+                'name': pq.patient.user.get_full_name(),
+                'status': pq.get_status_display(),
+                'status_raw': pq.status,
+                'position': pq.position,
+                'is_emergency': pq.is_emergency,
+                'estimated_time': pq.estimated_time,
+                'check_in_time': pq.check_in_time,
+                'wait_time': pq.get_wait_time(),
+            })
+
+        for appt in pending_appointments:
+            patients_list.append({
+                'name': appt.patient.user.get_full_name(),
+                'status': 'Pending',
+                'status_raw': 'PENDING',
+                'position': None,
+                'is_emergency': False,
+                'estimated_time': 0,
+                'check_in_time': None,
+                'wait_time': 0,
+                'appointment_time': appt.start_time,
+            })
 
         return {
             'has_queue': True,
             'queue_id': today_queue.pk,
+            'total_booked': total_booked,
             'waiting': patient_queues.filter(status='WAITING').count(),
             'in_progress': patient_queues.filter(status='IN_PROGRESS').count(),
             'completed': completed,
+            'pending': pending_count,
             'no_shows': patient_queues.filter(status='NO_SHOW').count(),
             'emergency': patient_queues.filter(status='EMERGENCY').count(),
-            'total': total,
+            'total': total_in_queue,
             'duration_minutes': duration_minutes,
             'completion_rate': completion_rate,
+            'patients': patients_list,
         }
 
     @staticmethod
     def _get_future_stats(doctor, today, date_to):
-        """Get future appointments/queue statistics for a doctor."""
+        """Get future appointments/queue statistics for a doctor with patient details."""
         future_appointments = Appointment.objects.filter(
             doctor=doctor,
             appointment_date__gt=today,
             appointment_date__lte=date_to,
             status__in=['SCHEDULED', 'CHECKED_IN']
-        )
+        ).select_related('patient__user').order_by('appointment_date', 'start_time')
+
+        urgent_notes_keywords = ['urgent', 'emergency', 'critical']
+        urgent_count = 0
+        patients_list = []
+        for appt in future_appointments:
+            is_urgent = any(kw in (appt.notes or '').lower() for kw in urgent_notes_keywords)
+            if is_urgent:
+                urgent_count += 1
+            patients_list.append({
+                'name': appt.patient.user.get_full_name(),
+                'appointment_date': appt.appointment_date,
+                'appointment_time': appt.start_time,
+                'status': appt.get_status_display(),
+                'is_urgent': is_urgent,
+                'notes': appt.notes,
+            })
 
         return {
             'scheduled_appointments': future_appointments.count(),
+            'urgent': urgent_count,
             'next_7_days': future_appointments.filter(
                 appointment_date__lte=today + timedelta(days=7)
             ).count(),
+            'patients': patients_list,
         }
 
     @staticmethod

@@ -269,6 +269,7 @@ class AdminQueueStatsView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         date_from_str = self.request.GET.get('date_from')
         date_to_str = self.request.GET.get('date_to')
+        doctor_id = self.request.GET.get('doctor')
         today = timezone.now().date()
 
         try:
@@ -281,7 +282,9 @@ class AdminQueueStatsView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
             date_to = today + timedelta(days=30)
 
         context['doctor_stats'] = AdminDashboardService.get_doctor_queue_stats(
-            date_from, date_to)
+            date_from, date_to, doctor_id=doctor_id or None)
+        context['doctors'] = Doctor.objects.select_related('user').all()
+        context['selected_doctor'] = doctor_id or ''
         context['date_from'] = date_from
         context['date_to'] = date_to
         context['today'] = today

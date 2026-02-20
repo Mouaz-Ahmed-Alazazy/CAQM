@@ -33,43 +33,120 @@
     .nav-pills .nav-link.active {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
+
+    .patient-list-toggle {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .patient-list-toggle:hover {
+        color: #667eea;
+    }
+
+    .patient-row {
+        font-size: 0.9rem;
+    }
+
+    .time-comparison .actual {
+        font-weight: 600;
+    }
+
+    .time-comparison .over {
+        color: #dc3545;
+    }
+
+    .time-comparison .under {
+        color: #28a745;
+    }
+
+    .stat-mini {
+        text-align: center;
+        padding: 0.5rem;
+    }
+
+    .stat-mini h5 {
+        margin-bottom: 0;
+        font-weight: 700;
+    }
+
+    .stat-mini small {
+        font-size: 0.75rem;
+    }
+
+    .queue-date-card {
+        border-left: 4px solid #667eea;
+        margin-bottom: 1rem;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+
+    .status-dot.waiting { background: #ffc107; }
+    .status-dot.in-progress { background: #0d6efd; }
+    .status-dot.completed { background: #198754; }
+    .status-dot.no-show { background: #dc3545; }
+    .status-dot.emergency { background: #0dcaf0; }
+    .status-dot.pending { background: #6c757d; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Header -->
     <div class="row mb-4">
         <div class="col-md-8">
             <h2><i class="fas fa-chart-bar"></i> Queue Statistics</h2>
-            <p class="text-muted">Doctor queue analytics and performance metrics</p>
+            <p class="text-muted">Doctor queue analytics, patient tracking, and performance metrics</p>
         </div>
         <div class="col-md-4 text-md-end">
-            <a href="{% url 'admins:admin_dashboard' %}" class="btn btn-secondary">
+            <a href="{% url 'admins:admin_dashboard' %}" class="btn btn-secondary" aria-label="Back to Dashboard">
                 <i class="fas fa-arrow-left"></i> Back to Dashboard
             </a>
         </div>
     </div>
 
-    <!-- Date Filter -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-filter"></i> Filters</h5>
+                </div>
                 <div class="card-body">
                     <form method="get" class="row g-3 align-items-end">
-                        <div class="col-md-4">
-                            <label class="form-label"><i class="fas fa-calendar"></i> From Date</label>
-                            <input type="date" name="date_from" class="form-control"
-                                value="{{ date_from|date:'Y-m-d' }}" aria-label="Filter queue statistics from date">
+                        <div class="col-sm-6 col-md-3">
+                            <label class="form-label" for="doctor-filter"><i class="fas fa-user-md"></i> Doctor</label>
+                            <select name="doctor" id="doctor-filter" class="form-select" aria-label="Filter by doctor">
+                                <option value="">All Doctors</option>
+                                {% for doc in doctors %}
+                                <option value="{{ doc.pk }}" {% if selected_doctor == doc.pk|stringformat:"d" %}selected{% endif %}>
+                                    Dr. {{ doc.user.get_full_name }} - {{ doc.get_specialization_display }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label"><i class="fas fa-calendar"></i> To Date</label>
-                            <input type="date" name="date_to" class="form-control" value="{{ date_to|date:'Y-m-d' }}" aria-label="Filter queue statistics to date">
+                        <div class="col-sm-6 col-md-3">
+                            <label class="form-label" for="date-from"><i class="fas fa-calendar"></i> From Date</label>
+                            <input type="date" name="date_from" id="date-from" class="form-control"
+                                value="{{ date_from|date:'Y-m-d' }}" aria-label="Filter from date">
                         </div>
-                        <div class="col-md-4">
-                            <button type="submit" class="btn btn-primary w-100" aria-label="Apply queue statistics date filter">
-                                <i class="fas fa-filter"></i> Apply Filter
+                        <div class="col-sm-6 col-md-3">
+                            <label class="form-label" for="date-to"><i class="fas fa-calendar"></i> To Date</label>
+                            <input type="date" name="date_to" id="date-to" class="form-control"
+                                value="{{ date_to|date:'Y-m-d' }}" aria-label="Filter to date">
+                        </div>
+                        <div class="col-sm-6 col-md-3 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-grow-1" aria-label="Apply filters">
+                                <i class="fas fa-filter"></i> Apply
                             </button>
+                            {% if selected_doctor %}
+                            <a href="{% url 'admins:admin_queue_stats' %}" class="btn btn-outline-secondary" aria-label="Clear all filters">
+                                <i class="fas fa-times"></i>
+                            </a>
+                            {% endif %}
                         </div>
                     </form>
                 </div>
@@ -77,7 +154,6 @@
         </div>
     </div>
 
-    <!-- Doctor Queue Statistics -->
     <div class="row">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
@@ -85,25 +161,25 @@
                     <ul class="nav nav-pills" id="queueTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="all-tab" data-bs-toggle="pill"
-                                data-bs-target="#all-doctors" type="button" aria-label="View all doctors queue statistics" aria-selected="true">
-                                <i class="fas fa-th-list"></i> All Doctors
+                                data-bs-target="#all-doctors" type="button" aria-label="View all doctors overview" aria-selected="true">
+                                <i class="fas fa-th-list"></i> Overview
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="past-tab" data-bs-toggle="pill" data-bs-target="#past-queues"
-                                type="button" aria-label="View past queues statistics" aria-selected="false">
-                                <i class="fas fa-history"></i> Past Queues
+                                type="button" aria-label="View previous queues" aria-selected="false">
+                                <i class="fas fa-history"></i> Previous Queues
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="today-tab" data-bs-toggle="pill" data-bs-target="#today-queues"
-                                type="button" aria-label="View today's queue statistics" aria-selected="false">
-                                <i class="fas fa-clock"></i> Today
+                                type="button" aria-label="View current queues" aria-selected="false">
+                                <i class="fas fa-clock"></i> Current Queues
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="future-tab" data-bs-toggle="pill"
-                                data-bs-target="#future-queues" type="button" aria-label="View upcoming queue statistics" aria-selected="false">
+                                data-bs-target="#future-queues" type="button" aria-label="View upcoming queues" aria-selected="false">
                                 <i class="fas fa-calendar-alt"></i> Upcoming
                             </button>
                         </li>
@@ -111,7 +187,8 @@
                 </div>
                 <div class="card-body">
                     <div class="tab-content" id="queueTabsContent">
-                        <!-- All Doctors Tab -->
+
+                        <!-- Overview Tab -->
                         <div class="tab-pane fade show active" id="all-doctors" role="tabpanel">
                             <div class="table-responsive">
                                 <table class="table table-hover table-stats align-middle">
@@ -119,8 +196,8 @@
                                         <tr>
                                             <th>Doctor</th>
                                             <th>Specialization</th>
-                                            <th class="text-center">Past (30 days)</th>
-                                            <th class="text-center">Today</th>
+                                            <th class="text-center">Previous</th>
+                                            <th class="text-center">Current</th>
                                             <th class="text-center">Upcoming</th>
                                             <th class="text-center">Completion Rate</th>
                                         </tr>
@@ -128,35 +205,40 @@
                                     <tbody>
                                         {% for stat in doctor_stats %}
                                         <tr>
-                                            <td>
-                                                <strong>{{ stat.doctor_name }}</strong>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-secondary">{{ stat.specialization }}</span>
-                                            </td>
+                                            <td><strong>{{ stat.doctor_name }}</strong></td>
+                                            <td><span class="badge bg-secondary">{{ stat.specialization }}</span></td>
                                             <td class="text-center">
-                                                <span class="badge bg-success queue-badge">{{ stat.past.completed }}
-                                                    completed</span>
-                                                <span class="badge bg-danger queue-badge">{{ stat.past.no_shows }}
-                                                    no-shows</span>
+                                                <span class="badge bg-success queue-badge">{{ stat.past.completed }} done</span>
+                                                <span class="badge bg-danger queue-badge">{{ stat.past.no_shows }} no-show</span>
+                                                {% if stat.past.urgent > 0 %}
+                                                <span class="badge bg-info queue-badge">{{ stat.past.urgent }} urgent</span>
+                                                {% endif %}
                                             </td>
                                             <td class="text-center">
                                                 {% if stat.today.has_queue %}
                                                 <span class="badge bg-warning text-dark queue-badge">{{ stat.today.waiting }} waiting</span>
-                                                <span class="badge bg-primary queue-badge">{{ stat.today.in_progress }} in progress</span>
+                                                <span class="badge bg-primary queue-badge">{{ stat.today.in_progress }} active</span>
+                                                {% if stat.today.pending > 0 %}
+                                                <span class="badge bg-secondary queue-badge">{{ stat.today.pending }} pending</span>
+                                                {% endif %}
+                                                {% else %}
+                                                {% if stat.today.total_booked > 0 %}
+                                                <span class="badge bg-secondary queue-badge">{{ stat.today.total_booked }} booked</span>
                                                 {% else %}
                                                 <span class="badge bg-light text-muted">No queue</span>
                                                 {% endif %}
+                                                {% endif %}
                                             </td>
                                             <td class="text-center">
-                                                <span class="badge bg-info queue-badge">{{ stat.future.scheduled_appointments }} scheduled</span>
+                                                <span class="badge bg-info queue-badge">{{ stat.future.scheduled_appointments }} booked</span>
+                                                {% if stat.future.urgent > 0 %}
+                                                <span class="badge bg-danger queue-badge">{{ stat.future.urgent }} urgent</span>
+                                                {% endif %}
                                             </td>
                                             <td class="text-center">
                                                 <div class="d-flex align-items-center justify-content-center">
-                                                    <div class="progress progress-thin flex-grow-1 me-2"
-                                                        style="max-width: 100px;">
-                                                        <div class="progress-bar bg-success"
-                                                            style="width: {{ stat.past.completion_rate }}%"></div>
+                                                    <div class="progress progress-thin flex-grow-1 me-2" style="max-width: 100px;">
+                                                        <div class="progress-bar bg-success" style="width: {{ stat.past.completion_rate }}%"></div>
                                                     </div>
                                                     <span class="small">{{ stat.past.completion_rate }}%</span>
                                                 </div>
@@ -166,7 +248,7 @@
                                         <tr>
                                             <td colspan="6" class="text-center text-muted py-4">
                                                 <i class="fas fa-user-md fa-2x mb-2"></i>
-                                                <p>No doctors registered yet.</p>
+                                                <p>No doctors found.</p>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -175,97 +257,289 @@
                             </div>
                         </div>
 
-                        <!-- Past Queues Tab -->
+                        <!-- Previous Queues Tab -->
                         <div class="tab-pane fade" id="past-queues" role="tabpanel">
-                            <div class="table-responsive">
-                                <table class="table table-hover table-stats align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Doctor</th>
-                                            <th class="text-center">Queue Days</th>
-                                            <th class="text-center">Total Booked</th>
-                                            <th class="text-center">Completed</th>
-                                            <th class="text-center">No Shows</th>
-                                            <th class="text-center">Avg Duration</th>
-                                            <th class="text-center">Completion Rate</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for stat in doctor_stats %}
-                                        <tr>
-                                            <td><strong>{{ stat.doctor_name }}</strong></td>
-                                            <td class="text-center">{{ stat.past.queue_days }}</td>
-                                            <td class="text-center"><span class="badge bg-primary">{{ stat.past.total_booked }}</span></td>
-                                            <td class="text-center"><span class="badge bg-success">{{ stat.past.completed }}</span></td>
-                                            <td class="text-center"><span class="badge bg-danger">{{ stat.past.no_shows }}</span></td>
-                                            <td class="text-center"><span class="badge bg-info">{{ stat.past.avg_duration_minutes }} min</span></td>
-                                            <td class="text-center">
-                                                <div class="d-flex align-items-center justify-content-center">
-                                                    <div class="progress progress-thin flex-grow-1 me-2"
-                                                        style="max-width: 100px;">
-                                                        <div class="progress-bar bg-success"
-                                                            style="width: {{ stat.past.completion_rate }}%"></div>
-                                                    </div>
-                                                    <span>{{ stat.past.completion_rate }}%</span>
+                            {% for stat in doctor_stats %}
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <h5 class="mb-0 me-3">
+                                        <i class="fas fa-user-md text-primary"></i> {{ stat.doctor_name }}
+                                    </h5>
+                                    <span class="badge bg-secondary">{{ stat.specialization }}</span>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-6 col-sm-4 col-md-2">
+                                        <div class="stat-mini border rounded">
+                                            <h5 class="text-primary">{{ stat.past.total_booked }}</h5>
+                                            <small class="text-muted">Booked</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-sm-4 col-md-2">
+                                        <div class="stat-mini border rounded">
+                                            <h5 class="text-success">{{ stat.past.completed }}</h5>
+                                            <small class="text-muted">Completed</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-sm-4 col-md-2">
+                                        <div class="stat-mini border rounded">
+                                            <h5 class="text-danger">{{ stat.past.no_shows }}</h5>
+                                            <small class="text-muted">No-Shows</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-sm-4 col-md-2">
+                                        <div class="stat-mini border rounded">
+                                            <h5 class="text-info">{{ stat.past.urgent }}</h5>
+                                            <small class="text-muted">Urgent</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-sm-4 col-md-2">
+                                        <div class="stat-mini border rounded time-comparison">
+                                            <h5 class="actual {% if stat.past.avg_duration_minutes > stat.past.avg_estimated_minutes %}over{% else %}under{% endif %}">
+                                                {{ stat.past.avg_duration_minutes }}m
+                                            </h5>
+                                            <small class="text-muted">Actual (avg)</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-sm-4 col-md-2">
+                                        <div class="stat-mini border rounded">
+                                            <h5>{{ stat.past.avg_estimated_minutes }}m</h5>
+                                            <small class="text-muted">Estimated (avg)</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span>Completion Rate</span>
+                                        <span>{{ stat.past.completion_rate }}%</span>
+                                    </div>
+                                    <div class="progress progress-thin">
+                                        <div class="progress-bar bg-success" role="progressbar"
+                                             style="width: {{ stat.past.completion_rate }}%"
+                                             aria-valuenow="{{ stat.past.completion_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+
+                                {% if stat.past.queue_details %}
+                                <div class="accordion" id="pastAccordion{{ stat.doctor_id }}">
+                                    {% for qd in stat.past.queue_details %}
+                                    <div class="accordion-item queue-date-card">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button collapsed py-2" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#pastQ{{ stat.doctor_id }}_{{ forloop.counter }}"
+                                                aria-label="Show patients for queue on {{ qd.date }}">
+                                                <div class="d-flex w-100 justify-content-between align-items-center me-3">
+                                                    <span>
+                                                        <i class="fas fa-calendar-day text-muted me-2"></i>
+                                                        <strong>{{ qd.date|date:"M d, Y" }}</strong>
+                                                    </span>
+                                                    <span class="ms-3">
+                                                        <span class="badge bg-primary">{{ qd.total }} patients</span>
+                                                        <span class="badge bg-success">{{ qd.completed }} done</span>
+                                                        {% if qd.no_shows > 0 %}<span class="badge bg-danger">{{ qd.no_shows }} no-show</span>{% endif %}
+                                                        {% if qd.urgent > 0 %}<span class="badge bg-info">{{ qd.urgent }} urgent</span>{% endif %}
+                                                        {% if qd.actual_minutes > 0 %}
+                                                        <span class="badge {% if qd.actual_minutes > qd.estimated_minutes %}bg-danger{% else %}bg-success{% endif %}">
+                                                            {{ qd.actual_minutes }}m / {{ qd.estimated_minutes }}m est.
+                                                        </span>
+                                                        {% endif %}
+                                                    </span>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                                            </button>
+                                        </h2>
+                                        <div id="pastQ{{ stat.doctor_id }}_{{ forloop.counter }}" class="accordion-collapse collapse"
+                                             data-bs-parent="#pastAccordion{{ stat.doctor_id }}">
+                                            <div class="accordion-body p-0">
+                                                <table class="table table-sm table-hover mb-0 patient-row">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>#</th>
+                                                            <th>Patient</th>
+                                                            <th>Status</th>
+                                                            <th>Check-in</th>
+                                                            <th>Est. Wait</th>
+                                                            <th>Consultation</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for p in qd.patients %}
+                                                        <tr>
+                                                            <td>{{ p.position }}</td>
+                                                            <td>
+                                                                {% if p.is_emergency %}<i class="fas fa-ambulance text-danger me-1" title="Emergency"></i>{% endif %}
+                                                                {{ p.name }}
+                                                            </td>
+                                                            <td>
+                                                                {% if p.status_raw == 'TERMINATED' %}
+                                                                <span class="status-dot completed"></span>Completed
+                                                                {% elif p.status_raw == 'NO_SHOW' %}
+                                                                <span class="status-dot no-show"></span>No Show
+                                                                {% elif p.status_raw == 'EMERGENCY' %}
+                                                                <span class="status-dot emergency"></span>Emergency
+                                                                {% elif p.status_raw == 'WAITING' %}
+                                                                <span class="status-dot waiting"></span>Waiting
+                                                                {% elif p.status_raw == 'IN_PROGRESS' %}
+                                                                <span class="status-dot in-progress"></span>In Progress
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>{{ p.check_in_time|time:"h:i A" }}</td>
+                                                            <td>{{ p.estimated_time }} min</td>
+                                                            <td>
+                                                                {% if p.consultation_duration > 0 %}
+                                                                {{ p.consultation_duration }} min
+                                                                {% else %}
+                                                                <span class="text-muted">-</span>
+                                                                {% endif %}
+                                                            </td>
+                                                        </tr>
+                                                        {% empty %}
+                                                        <tr><td colspan="6" class="text-center text-muted">No patients in this queue</td></tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-history fa-2x mb-2"></i>
+                                    <p>No previous queues in this date range.</p>
+                                </div>
+                                {% endif %}
                             </div>
+                            {% if not forloop.last %}<hr class="my-4">{% endif %}
+                            {% empty %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-user-md fa-2x mb-2"></i>
+                                <p>No doctors found.</p>
+                            </div>
+                            {% endfor %}
                         </div>
 
-                        <!-- Today Tab -->
+                        <!-- Current Queues Tab -->
                         <div class="tab-pane fade" id="today-queues" role="tabpanel">
                             <div class="row">
                                 {% for stat in doctor_stats %}
-                                <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="col-lg-6 mb-4">
                                     <div class="card doctor-card h-100 shadow-sm">
-                                        <div class="card-header text-white">
-                                            <h6 class="mb-0">{{ stat.doctor_name }}</h6>
-                                            <small>{{ stat.specialization }}</small>
+                                        <div class="card-header text-white d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-0">{{ stat.doctor_name }}</h6>
+                                                <small>{{ stat.specialization }}</small>
+                                            </div>
+                                            {% if stat.today.has_queue %}
+                                            <span class="badge bg-light text-dark">{{ stat.today.total_booked }} booked today</span>
+                                            {% endif %}
                                         </div>
                                         <div class="card-body">
-                                            {% if stat.today.has_queue %}
-                                            <div class="row text-center">
-                                                <div class="col-4">
+                                            {% if stat.today.has_queue or stat.today.total_booked > 0 %}
+                                            <div class="row text-center mb-3">
+                                                <div class="col">
                                                     <h4 class="text-warning mb-0">{{ stat.today.waiting }}</h4>
                                                     <small class="text-muted">Waiting</small>
                                                 </div>
-                                                <div class="col-4">
+                                                <div class="col">
                                                     <h4 class="text-primary mb-0">{{ stat.today.in_progress }}</h4>
                                                     <small class="text-muted">In Progress</small>
                                                 </div>
-                                                <div class="col-4">
+                                                <div class="col">
                                                     <h4 class="text-success mb-0">{{ stat.today.completed }}</h4>
-                                                    <small class="text-muted">Done</small>
+                                                    <small class="text-muted">Completed</small>
+                                                </div>
+                                                <div class="col">
+                                                    <h4 class="text-secondary mb-0">{{ stat.today.pending }}</h4>
+                                                    <small class="text-muted">Pending</small>
+                                                </div>
+                                                <div class="col">
+                                                    <h4 class="text-info mb-0">{{ stat.today.emergency }}</h4>
+                                                    <small class="text-muted">Urgent</small>
                                                 </div>
                                             </div>
-                                            <hr>
+
+                                            {% if stat.today.has_queue %}
                                             <div class="mb-3">
                                                 <div class="d-flex justify-content-between small mb-1">
                                                     <span>Queue Progress</span>
                                                     <span>{{ stat.today.completion_rate }}%</span>
                                                 </div>
                                                 <div class="progress progress-thin">
-                                                    <div class="progress-bar bg-success" role="progressbar" 
-                                                         style="width: {{ stat.today.completion_rate }}%" 
+                                                    <div class="progress-bar bg-success" role="progressbar"
+                                                         style="width: {{ stat.today.completion_rate }}%"
                                                          aria-valuenow="{{ stat.today.completion_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
                                                 </div>
                                             </div>
-                                            <div class="d-flex justify-content-between small text-muted mb-2">
+                                            <div class="d-flex justify-content-between small text-muted mb-3">
                                                 <span><i class="fas fa-stopwatch"></i> Active: {{ stat.today.duration_minutes }} min</span>
-                                                <span><i class="fas fa-users"></i> Total: {{ stat.today.total }}</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between small">
+                                                <span><i class="fas fa-users"></i> In Queue: {{ stat.today.total }}</span>
                                                 <span><i class="fas fa-exclamation-triangle text-danger"></i> {{ stat.today.no_shows }} No Shows</span>
-                                                <span><i class="fas fa-ambulance text-info"></i> {{ stat.today.emergency }} Emergency</span>
                                             </div>
+                                            {% endif %}
+
+                                            {% if stat.today.patients %}
+                                            <div class="mt-2">
+                                                <a class="small text-decoration-none patient-list-toggle" data-bs-toggle="collapse"
+                                                   href="#todayPatients{{ stat.doctor_id }}" aria-label="Toggle patient list">
+                                                    <i class="fas fa-chevron-down me-1"></i> View Patients ({{ stat.today.patients|length }})
+                                                </a>
+                                                <div class="collapse mt-2" id="todayPatients{{ stat.doctor_id }}">
+                                                    <table class="table table-sm table-hover mb-0 patient-row">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th>#</th>
+                                                                <th>Patient</th>
+                                                                <th>Status</th>
+                                                                <th>Info</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for p in stat.today.patients %}
+                                                            <tr>
+                                                                <td>{% if p.position %}{{ p.position }}{% else %}-{% endif %}</td>
+                                                                <td>
+                                                                    {% if p.is_emergency %}<i class="fas fa-ambulance text-danger me-1" title="Emergency"></i>{% endif %}
+                                                                    {{ p.name }}
+                                                                </td>
+                                                                <td>
+                                                                    {% if p.status_raw == 'WAITING' %}
+                                                                    <span class="status-dot waiting"></span>Waiting
+                                                                    {% elif p.status_raw == 'IN_PROGRESS' %}
+                                                                    <span class="status-dot in-progress"></span>In Progress
+                                                                    {% elif p.status_raw == 'TERMINATED' %}
+                                                                    <span class="status-dot completed"></span>Completed
+                                                                    {% elif p.status_raw == 'EMERGENCY' %}
+                                                                    <span class="status-dot emergency"></span>Emergency
+                                                                    {% elif p.status_raw == 'NO_SHOW' %}
+                                                                    <span class="status-dot no-show"></span>No Show
+                                                                    {% elif p.status_raw == 'PENDING' %}
+                                                                    <span class="status-dot pending"></span>Pending
+                                                                    {% endif %}
+                                                                </td>
+                                                                <td>
+                                                                    {% if p.status_raw == 'PENDING' %}
+                                                                    <small class="text-muted">Appt: {{ p.appointment_time|time:"h:i A" }}</small>
+                                                                    {% elif p.check_in_time %}
+                                                                    <small class="text-muted">
+                                                                        In: {{ p.check_in_time|time:"h:i A" }}
+                                                                        {% if p.wait_time > 0 %} | Wait: {{ p.wait_time }}m{% endif %}
+                                                                        {% if p.estimated_time > 0 %} | Est: {{ p.estimated_time }}m{% endif %}
+                                                                    </small>
+                                                                    {% endif %}
+                                                                </td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+
                                             {% else %}
                                             <div class="text-center text-muted py-3">
                                                 <i class="fas fa-calendar-times fa-2x mb-2"></i>
-                                                <p class="mb-0">No queue today</p>
+                                                <p class="mb-0">No queue or appointments today</p>
                                             </div>
                                             {% endif %}
                                         </div>
@@ -274,41 +548,82 @@
                                 {% empty %}
                                 <div class="col-12 text-center text-muted py-4">
                                     <i class="fas fa-user-md fa-2x mb-2"></i>
-                                    <p>No doctors registered.</p>
+                                    <p>No doctors found.</p>
                                 </div>
                                 {% endfor %}
                             </div>
                         </div>
 
-                        <!-- Future Tab -->
+                        <!-- Upcoming Tab -->
                         <div class="tab-pane fade" id="future-queues" role="tabpanel">
-                            <div class="table-responsive">
-                                <table class="table table-hover table-stats align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Doctor</th>
-                                            <th>Specialization</th>
-                                            <th class="text-center">Next 7 Days</th>
-                                            <th class="text-center">Total Scheduled</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for stat in doctor_stats %}
-                                        <tr>
-                                            <td><strong>{{ stat.doctor_name }}</strong></td>
-                                            <td><span class="badge bg-secondary">{{ stat.specialization }}</span></td>
-                                            <td class="text-center">
-                                                <span class="badge bg-warning text-dark queue-badge">{{ stat.future.next_7_days }} appointments</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-info queue-badge">{{ stat.future.scheduled_appointments }} total</span>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                            {% for stat in doctor_stats %}
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <div>
+                                        <h5 class="mb-0 me-3 d-inline">
+                                            <i class="fas fa-user-md text-primary"></i> {{ stat.doctor_name }}
+                                        </h5>
+                                        <span class="badge bg-secondary">{{ stat.specialization }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-info queue-badge">{{ stat.future.scheduled_appointments }} booked</span>
+                                        {% if stat.future.urgent > 0 %}
+                                        <span class="badge bg-danger queue-badge">{{ stat.future.urgent }} urgent</span>
+                                        {% endif %}
+                                        <span class="badge bg-warning text-dark queue-badge">{{ stat.future.next_7_days }} next 7 days</span>
+                                    </div>
+                                </div>
+
+                                {% if stat.future.patients %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover align-middle patient-row">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Patient</th>
+                                                <th>Date</th>
+                                                <th>Time</th>
+                                                <th>Status</th>
+                                                <th>Notes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for p in stat.future.patients %}
+                                            <tr>
+                                                <td>
+                                                    {% if p.is_urgent %}<i class="fas fa-exclamation-circle text-danger me-1" title="Urgent"></i>{% endif %}
+                                                    {{ p.name }}
+                                                </td>
+                                                <td>{{ p.appointment_date|date:"M d, Y" }}</td>
+                                                <td>{{ p.appointment_time|time:"h:i A" }}</td>
+                                                <td><span class="badge bg-info">{{ p.status }}</span></td>
+                                                <td>
+                                                    {% if p.notes %}
+                                                    <small class="text-muted">{{ p.notes|truncatewords:10 }}</small>
+                                                    {% else %}
+                                                    <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-calendar fa-2x mb-2"></i>
+                                    <p>No upcoming appointments in this date range.</p>
+                                </div>
+                                {% endif %}
                             </div>
+                            {% if not forloop.last %}<hr class="my-4">{% endif %}
+                            {% empty %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-user-md fa-2x mb-2"></i>
+                                <p>No doctors found.</p>
+                            </div>
+                            {% endfor %}
                         </div>
+
                     </div>
                 </div>
             </div>
