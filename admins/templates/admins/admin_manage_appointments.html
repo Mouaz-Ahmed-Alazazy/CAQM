@@ -143,6 +143,7 @@
                             <th>Date</th>
                             <th>Time</th>
                             <th>Status</th>
+                            <th>Booked By</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -171,6 +172,13 @@
                                 <span class="badge bg-danger status-badge">Cancelled</span>
                                 {% elif appointment.status == 'NO_SHOW' %}
                                 <span class="badge bg-secondary status-badge">No Show</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if appointment.booked_by %}
+                                <span class="badge bg-secondary">{{ appointment.booked_by.get_full_name }}</span>
+                                {% else %}
+                                <span class="text-muted small">Patient</span>
                                 {% endif %}
                             </td>
                             <td>

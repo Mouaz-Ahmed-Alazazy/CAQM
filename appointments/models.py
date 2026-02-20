@@ -28,6 +28,10 @@ class Appointment(models.Model):
     end_time = models.TimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
     notes = models.TextField(blank=True)
+    booked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='booked_appointments',
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

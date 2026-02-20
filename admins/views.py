@@ -472,6 +472,7 @@ class AdminBookAppointmentView(LoginRequiredMixin, AdminRequiredMixin, View):
             appointment_date=appointment_date,
             start_time=start_time,
             notes=notes,
+            booked_by=request.user,
         )
 
         if success:
@@ -505,6 +506,7 @@ class AdminBookEmergencyView(LoginRequiredMixin, AdminRequiredMixin, View):
             patient_id=patient_id,
             doctor_id=doctor_id,
             notes=notes,
+            booked_by=request.user,
         )
 
         if success:

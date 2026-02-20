@@ -85,6 +85,8 @@ The admin dashboard (`/admins/`) provides comprehensive queue management:
   - Quick Navigation cards added to admin dashboard for both booking types
   - Emergency booking restricted to admins only (nurses/patients have no emergency-marking views)
   - AdminBookingService in admins/services.py handles both booking flows
+  - `booked_by` field on Appointment model tracks which admin booked the appointment
+  - Manage Appointments table shows "Booked By" column (admin name badge or "Patient" for self-booked)
 - February 20, 2026: Enhanced admin queue management
   - Queue Stats page now shows Previous, Current, and Upcoming queues per doctor
   - Doctor filter dropdown to view queues for individual doctors

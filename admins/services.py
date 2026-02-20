@@ -506,7 +506,7 @@ class AdminAppointmentService:
     @staticmethod
     def get_appointments(doctor_id=None, date_from=None, date_to=None, status=None):
         queryset = Appointment.objects.select_related(
-            'doctor__user', 'patient__user'
+            'doctor__user', 'patient__user', 'booked_by'
         ).order_by('-appointment_date', '-start_time')
 
         if doctor_id:
@@ -752,7 +752,7 @@ class AdminBookingService:
 
     @staticmethod
     @transaction.atomic
-    def book_appointment(patient_id, doctor_id, appointment_date, start_time, notes=''):
+    def book_appointment(patient_id, doctor_id, appointment_date, start_time, notes='', booked_by=None):
         from appointments.services import AppointmentService
         try:
             patient = Patient.objects.get(pk=patient_id)
@@ -765,6 +765,9 @@ class AdminBookingService:
                 start_time=start_time,
                 notes=notes,
             )
+            if success and booked_by:
+                Appointment.objects.filter(pk=result.pk).update(booked_by=booked_by)
+                result.refresh_from_db()
             if success:
                 return True, result
             return False, str(result)
@@ -778,7 +781,7 @@ class AdminBookingService:
 
     @staticmethod
     @transaction.atomic
-    def book_emergency_appointment(patient_id, doctor_id, notes=''):
+    def book_emergency_appointment(patient_id, doctor_id, notes='', booked_by=None):
         from appointments.services import AppointmentService
         try:
             patient = Patient.objects.get(pk=patient_id)
@@ -790,13 +793,14 @@ class AdminBookingService:
 
             from django.db import connection
             cursor = connection.cursor()
+            booked_by_id = booked_by.pk if booked_by else None
             cursor.execute(
                 """INSERT INTO appointments
-                   (patient_id, doctor_id, appointment_date, start_time, end_time, status, notes, created_at, updated_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                   (patient_id, doctor_id, appointment_date, start_time, end_time, status, notes, booked_by_id, created_at, updated_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                 [patient.pk, doctor.pk, today, start_time, start_time,
                  'CHECKED_IN', f"[EMERGENCY] {notes}".strip(),
-                 timezone.now(), timezone.now()]
+                 booked_by_id, timezone.now(), timezone.now()]
             )
             appointment = Appointment.objects.filter(
                 patient=patient, doctor=doctor, appointment_date=today,
