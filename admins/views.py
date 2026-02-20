@@ -4,7 +4,7 @@ from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.utils import timezone
-from .services import AdminService, AdminDashboardService, AdminAppointmentService
+from .services import AdminService, AdminDashboardService, AdminAppointmentService, AdminBookingService
 from accounts.models import User
 from doctors.models import Doctor
 from patients.models import Patient
@@ -435,3 +435,85 @@ class AdminCancelDoctorAppointmentsView(LoginRequiredMixin, AdminRequiredMixin, 
             messages.error(request, message)
 
         return redirect('admins:admin_manage_appointments')
+
+
+class AdminBookAppointmentView(LoginRequiredMixin, AdminRequiredMixin, View):
+    template_name = 'admins/admin_book_appointment.html'
+
+    def get(self, request):
+        context = {
+            'patients': Patient.objects.select_related('user').order_by('user__first_name'),
+            'doctors': Doctor.objects.select_related('user').all(),
+            'today': timezone.now().date().isoformat(),
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        patient_id = request.POST.get('patient')
+        doctor_id = request.POST.get('doctor')
+        date_str = request.POST.get('appointment_date')
+        time_str = request.POST.get('start_time')
+        notes = request.POST.get('notes', '').strip()
+
+        if not all([patient_id, doctor_id, date_str, time_str]):
+            messages.error(request, 'All required fields must be filled')
+            return redirect('admins:admin_book_appointment')
+
+        try:
+            appointment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            start_time = datetime.strptime(time_str, '%H:%M').time()
+        except ValueError:
+            messages.error(request, 'Invalid date or time format')
+            return redirect('admins:admin_book_appointment')
+
+        success, result = AdminBookingService.book_appointment(
+            patient_id=patient_id,
+            doctor_id=doctor_id,
+            appointment_date=appointment_date,
+            start_time=start_time,
+            notes=notes,
+        )
+
+        if success:
+            messages.success(request, 'Appointment booked successfully')
+            return redirect('admins:admin_manage_appointments')
+        else:
+            messages.error(request, f'Booking failed: {result}')
+            return redirect('admins:admin_book_appointment')
+
+
+class AdminBookEmergencyView(LoginRequiredMixin, AdminRequiredMixin, View):
+    template_name = 'admins/admin_book_emergency.html'
+
+    def get(self, request):
+        context = {
+            'patients': Patient.objects.select_related('user').order_by('user__first_name'),
+            'doctors': Doctor.objects.select_related('user').all(),
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        patient_id = request.POST.get('patient')
+        doctor_id = request.POST.get('doctor')
+        notes = request.POST.get('notes', '').strip()
+
+        if not all([patient_id, doctor_id]):
+            messages.error(request, 'Patient and doctor are required')
+            return redirect('admins:admin_book_emergency')
+
+        success, result = AdminBookingService.book_emergency_appointment(
+            patient_id=patient_id,
+            doctor_id=doctor_id,
+            notes=notes,
+        )
+
+        if success:
+            messages.success(
+                request,
+                f'Emergency appointment booked for {result["patient_name"]} '
+                f'with Dr. {result["doctor_name"]}. Queue position: #{result["position"]}'
+            )
+            return redirect('admins:admin_dashboard')
+        else:
+            messages.error(request, f'Emergency booking failed: {result}')
+            return redirect('admins:admin_book_emergency')

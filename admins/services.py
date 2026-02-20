@@ -745,3 +745,99 @@ class AdminAppointmentService:
                     check_date += timedelta(days=1)
 
         return recommendations
+
+
+class AdminBookingService:
+    """Service layer for admin appointment booking (regular and emergency)."""
+
+    @staticmethod
+    @transaction.atomic
+    def book_appointment(patient_id, doctor_id, appointment_date, start_time, notes=''):
+        from appointments.services import AppointmentService
+        try:
+            patient = Patient.objects.get(pk=patient_id)
+            doctor = Doctor.objects.get(pk=doctor_id)
+
+            success, result = AppointmentService.book_appointment(
+                patient=patient,
+                doctor=doctor,
+                appointment_date=appointment_date,
+                start_time=start_time,
+                notes=notes,
+            )
+            if success:
+                return True, result
+            return False, str(result)
+        except Patient.DoesNotExist:
+            return False, 'Patient not found'
+        except Doctor.DoesNotExist:
+            return False, 'Doctor not found'
+        except Exception as e:
+            logger.error(f"Admin booking error: {e}", exc_info=True)
+            return False, str(e)
+
+    @staticmethod
+    @transaction.atomic
+    def book_emergency_appointment(patient_id, doctor_id, notes=''):
+        from appointments.services import AppointmentService
+        try:
+            patient = Patient.objects.get(pk=patient_id)
+            doctor = Doctor.objects.get(pk=doctor_id)
+            today = timezone.now().date()
+
+            now = timezone.now()
+            start_time = now.time().replace(second=0, microsecond=0)
+
+            from django.db import connection
+            cursor = connection.cursor()
+            cursor.execute(
+                """INSERT INTO appointments
+                   (patient_id, doctor_id, appointment_date, start_time, end_time, status, notes, created_at, updated_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                [patient.pk, doctor.pk, today, start_time, start_time,
+                 'CHECKED_IN', f"[EMERGENCY] {notes}".strip(),
+                 timezone.now(), timezone.now()]
+            )
+            appointment = Appointment.objects.filter(
+                patient=patient, doctor=doctor, appointment_date=today,
+                status='CHECKED_IN', notes__startswith='[EMERGENCY]'
+            ).order_by('-created_at').first()
+
+            queue, _ = Queue.objects.get_or_create(doctor=doctor, date=today)
+
+            existing = PatientQueue.objects.filter(queue=queue, patient=patient).first()
+            if existing:
+                existing.is_emergency = True
+                existing.status = 'EMERGENCY'
+                existing.save()
+                existing.mark_as_emergency()
+                patient_queue = existing
+            else:
+                patient_queue = PatientQueue.objects.create(
+                    queue=queue,
+                    patient=patient,
+                    status='EMERGENCY',
+                    is_emergency=True,
+                )
+                patient_queue.mark_as_emergency()
+
+            logger.info(
+                f"Emergency appointment booked: patient {patient.pk} "
+                f"with doctor {doctor.pk}, queue position {patient_queue.position}"
+            )
+
+            return True, {
+                'appointment': appointment,
+                'patient_queue': patient_queue,
+                'patient_name': patient.user.get_full_name(),
+                'doctor_name': doctor.user.get_full_name(),
+                'position': patient_queue.position,
+            }
+
+        except Patient.DoesNotExist:
+            return False, 'Patient not found'
+        except Doctor.DoesNotExist:
+            return False, 'Doctor not found'
+        except Exception as e:
+            logger.error(f"Admin emergency booking error: {e}", exc_info=True)
+            return False, str(e)

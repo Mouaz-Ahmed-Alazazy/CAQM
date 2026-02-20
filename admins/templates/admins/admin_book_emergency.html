@@ -1,0 +1,99 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Book Emergency - CAQM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-ambulance text-danger"></i> Book Emergency Appointment</h2>
+            <p class="text-muted">Immediately add a patient to the front of a doctor's queue</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'admins:admin_dashboard' %}" class="btn btn-secondary" aria-label="Back to Dashboard">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="fas fa-exclamation-triangle me-3 fa-lg"></i>
+                <div>
+                    <strong>Emergency Booking</strong> - This will immediately create an appointment for today,
+                    add the patient to the doctor's queue, and move them to position #1 (front of the queue).
+                    Only administrators can perform this action.
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-ambulance"></i> Emergency Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="emergencyForm">
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="patient" class="form-label">Patient *</label>
+                                <select name="patient" id="patient" class="form-select" required aria-label="Select patient for emergency">
+                                    <option value="">Select a patient</option>
+                                    {% for p in patients %}
+                                    <option value="{{ p.pk }}">{{ p.user.get_full_name }} ({{ p.user.email }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="doctor" class="form-label">Doctor *</label>
+                                <select name="doctor" id="doctor" class="form-select" required aria-label="Select doctor for emergency">
+                                    <option value="">Select a doctor</option>
+                                    {% for d in doctors %}
+                                    <option value="{{ d.pk }}">Dr. {{ d.user.get_full_name }} - {{ d.get_specialization_display }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="notes" class="form-label">Emergency Notes</label>
+                                <textarea name="notes" id="notes" class="form-control" rows="3"
+                                          placeholder="Describe the emergency situation..." aria-label="Emergency notes"></textarea>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'admins:admin_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-danger" id="submitBtn" aria-label="Book emergency appointment">
+                                <i class="fas fa-ambulance"></i> Book Emergency
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('emergencyForm');
+    form.addEventListener('submit', function(e) {
+        const patient = document.getElementById('patient').value;
+        const doctor = document.getElementById('doctor').value;
+        if (!patient || !doctor) {
+            e.preventDefault();
+            alert('Please select both a patient and a doctor.');
+            return;
+        }
+        if (!confirm('Are you sure you want to book this emergency appointment? The patient will be moved to the front of the queue immediately.')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -10,6 +10,8 @@ from .views import (
     AdminManageAppointmentsView,
     AdminCancelAppointmentView,
     AdminCancelDoctorAppointmentsView,
+    AdminBookAppointmentView,
+    AdminBookEmergencyView,
 )
 from .api import DoctorListAPIView
 
@@ -24,7 +26,7 @@ urlpatterns = [
          name='admin_register_user'),
     path('users/', AdminUserListView.as_view(), name='admin_user_list'),
     path('users/edit/<int:user_id>/', AdminEditUserView.as_view(),
-         name='admin_edit_user'),  # Edit user profile
+         name='admin_edit_user'),
     path('users/delete/<int:user_id>/',
          AdminDeleteUserView.as_view(), name='admin_delete_user'),
     path('appointments/', AdminManageAppointmentsView.as_view(),
@@ -33,6 +35,9 @@ urlpatterns = [
          AdminCancelAppointmentView.as_view(), name='admin_cancel_appointment'),
     path('appointments/cancel-doctor/', AdminCancelDoctorAppointmentsView.as_view(),
          name='admin_cancel_doctor_appointments'),
-    # API endpoints
+    path('book-appointment/', AdminBookAppointmentView.as_view(),
+         name='admin_book_appointment'),
+    path('book-emergency/', AdminBookEmergencyView.as_view(),
+         name='admin_book_emergency'),
     path('api/doctors/', DoctorListAPIView.as_view(), name='api_doctors'),
 ]

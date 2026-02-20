@@ -1,0 +1,142 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Book Appointment - CAQM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-calendar-plus"></i> Book Appointment</h2>
+            <p class="text-muted">Schedule an appointment for a patient</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'admins:admin_dashboard' %}" class="btn btn-secondary" aria-label="Back to Dashboard">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-check"></i> Appointment Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="bookAppointmentForm">
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="patient" class="form-label">Patient *</label>
+                                <select name="patient" id="patient" class="form-select" required aria-label="Select patient">
+                                    <option value="">Select a patient</option>
+                                    {% for p in patients %}
+                                    <option value="{{ p.pk }}">{{ p.user.get_full_name }} ({{ p.user.email }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="doctor" class="form-label">Doctor *</label>
+                                <select name="doctor" id="doctor" class="form-select" required aria-label="Select doctor">
+                                    <option value="">Select a doctor</option>
+                                    {% for d in doctors %}
+                                    <option value="{{ d.pk }}">Dr. {{ d.user.get_full_name }} - {{ d.get_specialization_display }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="appointment_date" class="form-label">Date *</label>
+                                <input type="date" name="appointment_date" id="appointment_date"
+                                       class="form-control" required min="{{ today }}" aria-label="Appointment date">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="start_time" class="form-label">Time Slot *</label>
+                                <select name="start_time" id="start_time" class="form-select" required aria-label="Select time slot" disabled>
+                                    <option value="">Select doctor and date first</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="notes" class="form-label">Notes</label>
+                                <textarea name="notes" id="notes" class="form-control" rows="3"
+                                          placeholder="Any additional notes about the appointment..." aria-label="Appointment notes"></textarea>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'admins:admin_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary" id="submitBtn" disabled aria-label="Book appointment">
+                                <i class="fas fa-calendar-check"></i> Book Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const doctorSelect = document.getElementById('doctor');
+    const dateInput = document.getElementById('appointment_date');
+    const timeSelect = document.getElementById('start_time');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function fetchSlots() {
+        const doctorId = doctorSelect.value;
+        const date = dateInput.value;
+
+        if (!doctorId || !date) {
+            timeSelect.innerHTML = '<option value="">Select doctor and date first</option>';
+            timeSelect.disabled = true;
+            submitBtn.disabled = true;
+            return;
+        }
+
+        timeSelect.innerHTML = '<option value="">Loading available slots...</option>';
+        timeSelect.disabled = true;
+
+        fetch(`/appointments/available-slots/?doctor_id=${doctorId}&date=${date}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    timeSelect.innerHTML = `<option value="">${data.error}</option>`;
+                    submitBtn.disabled = true;
+                    return;
+                }
+                if (data.slots && data.slots.length > 0) {
+                    timeSelect.innerHTML = '<option value="">Select a time slot</option>';
+                    data.slots.forEach(slot => {
+                        const opt = document.createElement('option');
+                        opt.value = slot.time;
+                        opt.textContent = slot.display;
+                        timeSelect.appendChild(opt);
+                    });
+                    timeSelect.disabled = false;
+                } else {
+                    timeSelect.innerHTML = '<option value="">No available slots for this date</option>';
+                    submitBtn.disabled = true;
+                }
+            })
+            .catch(() => {
+                timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+                submitBtn.disabled = true;
+            });
+    }
+
+    doctorSelect.addEventListener('change', fetchSlots);
+    dateInput.addEventListener('change', fetchSlots);
+    timeSelect.addEventListener('change', function() {
+        submitBtn.disabled = !this.value;
+    });
+});
+</script>
+{% endblock %}
