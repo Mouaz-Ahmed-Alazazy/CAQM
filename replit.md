@@ -77,6 +77,14 @@ The admin dashboard (`/admins/`) provides comprehensive queue management:
 - Password: admin123456
 
 ## Recent Changes
+- February 20, 2026: Admin-only booking system
+  - Book Appointment page (`/admins/book-appointment/`): admin can schedule appointments for any patient with any doctor
+  - Book Emergency page (`/admins/book-emergency/`): creates appointment + immediately adds patient to front of queue as emergency
+  - Emergency booking bypasses appointment validation (raw SQL insert) to avoid max-appointments and duplicate-specialization checks
+  - Emergency patients get position #1 in the queue (all others shifted down)
+  - Quick Navigation cards added to admin dashboard for both booking types
+  - Emergency booking restricted to admins only (nurses/patients have no emergency-marking views)
+  - AdminBookingService in admins/services.py handles both booking flows
 - February 20, 2026: Enhanced admin queue management
   - Queue Stats page now shows Previous, Current, and Upcoming queues per doctor
   - Doctor filter dropdown to view queues for individual doctors
