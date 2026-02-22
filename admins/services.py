@@ -209,7 +209,8 @@ class AdminDashboardService:
             date_to = today + timedelta(days=30)
 
         if doctor_id:
-            doctors = Doctor.objects.select_related('user').filter(pk=doctor_id)
+            doctors = Doctor.objects.select_related(
+                'user').filter(pk=doctor_id)
         else:
             doctors = Doctor.objects.select_related('user').all()
 
@@ -253,29 +254,32 @@ class AdminDashboardService:
         total_actual_minutes = 0
         total_estimated_minutes = 0
         queue_count_with_duration = 0
+        total_queue_count = 0
 
         queue_details = []
         for queue in past_queues:
-            pqs = queue.patient_queues.all()
-            q_total = pqs.count()
+            pqs = list(queue.patient_queues.all())
+            q_total = len(pqs)
             q_completed = len([p for p in pqs if p.status == 'TERMINATED'])
             q_no_shows = len([p for p in pqs if p.status == 'NO_SHOW'])
             q_urgent = len([p for p in pqs if p.is_emergency])
 
+            # Estimated minutes for this queue day (sum of all patients' estimates)
             total_est = sum(p.estimated_time for p in pqs)
+            total_estimated_minutes += total_est
+            total_queue_count += 1
 
-            last_patient = None
+            # Bug fix: compute actual session duration as time from first consultation
+            # start to last consultation end — not from queue.created_at which is the
+            # DB record creation timestamp (often days before the session).
             actual_minutes = 0
-            for p in sorted(pqs, key=lambda x: x.consultation_end_time or timezone.now(), reverse=True):
-                if p.status == 'TERMINATED' and p.consultation_end_time:
-                    last_patient = p
-                    break
-
-            if last_patient and last_patient.consultation_end_time:
-                duration = last_patient.consultation_end_time - queue.created_at
-                actual_minutes = max(0, int(duration.total_seconds() / 60))
+            started = [p for p in pqs if p.consultation_start_time]
+            ended = [p for p in pqs if p.status == 'TERMINATED' and p.consultation_end_time]
+            if started and ended:
+                first_start = min(p.consultation_start_time for p in started)
+                last_end = max(p.consultation_end_time for p in ended)
+                actual_minutes = max(0, int((last_end - first_start).total_seconds() / 60))
                 total_actual_minutes += actual_minutes
-                total_estimated_minutes += total_est
                 queue_count_with_duration += 1
 
             patients_list = []
@@ -303,8 +307,11 @@ class AdminDashboardService:
                 'patients': patients_list,
             })
 
-        avg_actual = round(total_actual_minutes / queue_count_with_duration) if queue_count_with_duration > 0 else 0
-        avg_estimated = round(total_estimated_minutes / queue_count_with_duration) if queue_count_with_duration > 0 else 0
+        avg_actual = round(
+            total_actual_minutes / queue_count_with_duration) if queue_count_with_duration > 0 else 0
+        # avg_estimated divides by all queues, not just ones with recorded durations
+        avg_estimated = round(
+            total_estimated_minutes / total_queue_count) if total_queue_count > 0 else 0
 
         return {
             'total_booked': total_booked,
@@ -364,7 +371,8 @@ class AdminDashboardService:
         total_in_queue = patient_queues.count()
         completed = patient_queues.filter(status='TERMINATED').count()
 
-        checked_in_patient_ids = set(patient_queues.values_list('patient_id', flat=True))
+        checked_in_patient_ids = set(
+            patient_queues.values_list('patient_id', flat=True))
         pending_appointments = today_appointments.exclude(
             patient_id__in=checked_in_patient_ids
         ).filter(status='SCHEDULED')
@@ -375,8 +383,11 @@ class AdminDashboardService:
             duration = timezone.now() - today_queue.created_at
             duration_minutes = int(duration.total_seconds() / 60)
 
+        # Bug fix: use total_booked as denominator (includes pending patients who
+        # haven't checked in yet) so the rate doesn't appear artificially high early
+        # in the day when most patients are still SCHEDULED.
         completion_rate = round(
-            (completed / total_in_queue * 100), 1) if total_in_queue > 0 else 0
+            (completed / total_booked * 100), 1) if total_booked > 0 else 0
 
         patients_list = []
         for pq in patient_queues:
@@ -434,7 +445,8 @@ class AdminDashboardService:
         urgent_count = 0
         patients_list = []
         for appt in future_appointments:
-            is_urgent = any(kw in (appt.notes or '').lower() for kw in urgent_notes_keywords)
+            is_urgent = any(kw in (appt.notes or '').lower()
+                            for kw in urgent_notes_keywords)
             if is_urgent:
                 urgent_count += 1
             patients_list.append({
@@ -472,6 +484,8 @@ class AdminDashboardService:
             'emergency': today_queues.filter(status='EMERGENCY').count(),
             'scheduled_appointments': today_appointments.filter(status='SCHEDULED').count(),
             'completed_appointments': today_appointments.filter(status='COMPLETED').count(),
+            # Bug fix: expose cancelled count so the admin dashboard can display it
+            'cancelled_appointments': today_appointments.filter(status='CANCELLED').count(),
         }
 
     @staticmethod
@@ -490,10 +504,12 @@ class AdminDashboardService:
                 Q(queue__doctor__user__last_name__icontains=search)
             )
 
+        # Bug fix: check_in_time is a TimeField (not DateTimeField), so we cannot
+        # filter with __date lookups on it. Use the related queue's date field instead.
         if date_from:
-            queryset = queryset.filter(check_in_time__date__gte=date_from)
+            queryset = queryset.filter(queue__date__gte=date_from)
         if date_to:
-            queryset = queryset.filter(check_in_time__date__lte=date_to)
+            queryset = queryset.filter(queue__date__lte=date_to)
         if status:
             queryset = queryset.filter(status=status)
 
@@ -766,7 +782,8 @@ class AdminBookingService:
                 notes=notes,
             )
             if success and booked_by:
-                Appointment.objects.filter(pk=result.pk).update(booked_by=booked_by)
+                Appointment.objects.filter(
+                    pk=result.pk).update(booked_by=booked_by)
                 result.refresh_from_db()
             if success:
                 return True, result
@@ -791,29 +808,26 @@ class AdminBookingService:
             now = timezone.now()
             start_time = now.time().replace(second=0, microsecond=0)
 
-            from django.db import connection
-            cursor = connection.cursor()
-            booked_by_id = booked_by.pk if booked_by else None
-            cursor.execute(
-                """INSERT INTO appointments
-                   (patient_id, doctor_id, appointment_date, start_time, end_time, status, notes, booked_by_id, created_at, updated_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                [patient.pk, doctor.pk, today, start_time, start_time,
-                 'CHECKED_IN', f"[EMERGENCY] {notes}".strip(),
-                 booked_by_id, timezone.now(), timezone.now()]
+            appointment = Appointment.objects.create(
+                patient=patient,
+                doctor=doctor,
+                appointment_date=today,
+                start_time=start_time,
+                end_time=start_time,
+                status='CHECKED_IN',
+                notes=f"[EMERGENCY] {notes}".strip(),
+                booked_by=booked_by
             )
-            appointment = Appointment.objects.filter(
-                patient=patient, doctor=doctor, appointment_date=today,
-                status='CHECKED_IN', notes__startswith='[EMERGENCY]'
-            ).order_by('-created_at').first()
 
             queue, _ = Queue.objects.get_or_create(doctor=doctor, date=today)
 
-            existing = PatientQueue.objects.filter(queue=queue, patient=patient).first()
+            existing = PatientQueue.objects.filter(
+                queue=queue, patient=patient).first()
             if existing:
-                existing.is_emergency = True
-                existing.status = 'EMERGENCY'
-                existing.save()
+                # Bug fix: previously set is_emergency/status and saved, then called
+                # mark_as_emergency() which saves again and shifts positions a second
+                # time — causing a double position-shift for all patients ahead.
+                # Now we call mark_as_emergency() once; it handles everything.
                 existing.mark_as_emergency()
                 patient_queue = existing
             else:

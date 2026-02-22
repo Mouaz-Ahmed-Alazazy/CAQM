@@ -23,7 +23,7 @@ class QRScannerView(LoginRequiredMixin, TemplateView):
     Mobile-optimized page with camera access.
     """
     template_name = 'queues/qr_scanner.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['user'] = self.request.user
@@ -37,7 +37,7 @@ class ProcessCheckInView(LoginRequiredMixin, View):
     Process check-in after QR code is scanned.
     Rate limited to 10 check-in attempts per minute per user.
     """
-    
+
     def post(self, request, *args, **kwargs):
         """Handle check-in request"""
         if getattr(request, 'limited', False):
@@ -46,9 +46,10 @@ class ProcessCheckInView(LoginRequiredMixin, View):
                 'message': 'Too many check-in attempts. Please wait a minute and try again.'
             }, status=429)
         try:
-            logger.info(f"Check-in request received from user: {request.user.email}")
+            logger.info(
+                f"Check-in request received from user: {request.user.email}")
             logger.info(f"Request body: {request.body}")
-            
+
             # Parse JSON body
             try:
                 data = json.loads(request.body)
@@ -59,28 +60,30 @@ class ProcessCheckInView(LoginRequiredMixin, View):
                     'success': False,
                     'message': 'Invalid request format.'
                 }, status=400)
-            
+
             qr_data = data.get('qr_data', '').strip()
             logger.info(f"QR data extracted: '{qr_data}'")
-            
+
             if not qr_data:
                 logger.warning("No QR code data provided")
                 return JsonResponse({
                     'success': False,
                     'message': 'No QR code data provided.'
                 }, status=400)
-            
+
             # Process check-in through service layer
-            logger.info(f"Processing check-in for user {request.user.email} with QR: {qr_data}")
+            logger.info(
+                f"Processing check-in for user {request.user.email} with QR: {qr_data}")
             result = CheckInService.process_check_in(request.user, qr_data)
             logger.info(f"Check-in result: {result}")
-            
+
             # Return JSON response
             status_code = 200 if result['success'] else 400
             return JsonResponse(result, status=status_code)
-            
+
         except Exception as e:
-            logger.error(f"Unexpected error in check-in: {str(e)}", exc_info=True)
+            logger.error(
+                f"Unexpected error in check-in: {str(e)}", exc_info=True)
             return JsonResponse({
                 'success': False,
                 'message': f'An unexpected error occurred: {str(e)}'
@@ -92,26 +95,27 @@ class CallNextPatientView(LoginRequiredMixin, View):
     API view for nurses/doctors to call the next patient in the queue.
     Requires doctor to have checked in first.
     """
+
     def post(self, request, *args, **kwargs):
         from .models import Queue
-        
+
         queue_id = request.POST.get('queue_id')
         if not queue_id:
             return JsonResponse({'success': False, 'message': 'Queue ID is required.'}, status=400)
-        
+
         # Get queue
         try:
             queue = Queue.objects.get(pk=queue_id)
         except Queue.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Queue not found.'}, status=404)
-        
+
         # GUARD: Block if doctor hasn't checked in
         if not CheckInService.is_doctor_checked_in(queue.doctor, queue.date):
             return JsonResponse({
-                'success': False, 
+                'success': False,
                 'message': "Doctor hasn't checked in yet."
             }, status=400)
-            
+
         success, message, entry = CheckInService.call_next_patient(queue_id)
         return JsonResponse({
             'success': success,
@@ -119,79 +123,85 @@ class CallNextPatientView(LoginRequiredMixin, View):
             'patient_name': str(entry.patient) if entry else None
         })
 
+
 class QueueStatusAPIView(LoginRequiredMixin, View):
     """
     API view for fetching real-time queue status as JSON.
     """
+
     def get(self, request, *args, **kwargs):
         patient = request.user.patient_profile
         today = timezone.now().date()
-        
+
         queue_entry = PatientQueue.objects.filter(
             patient=patient,
             queue__date=today,
             status__in=['WAITING', 'IN_PROGRESS']
         ).first()
-        
+
         if not queue_entry:
             return JsonResponse({'has_active_queue': False})
-            
+
         people_ahead = PatientQueue.objects.filter(
             queue=queue_entry.queue,
             status='WAITING',
             position__lt=queue_entry.position
         ).count()
-        
+
         # Recalculate estimated time dynamically
-        estimated_time = queue_entry.queue.get_estimated_wait_time(people_ahead + 1)
-        
+        estimated_time = queue_entry.queue.get_estimated_wait_time(
+            people_ahead)
+
         return JsonResponse({
             'has_active_queue': True,
             'position': queue_entry.position,
             'estimated_time': estimated_time,
+            'estimated_time_display': PatientQueue.format_minutes(estimated_time),
             'people_ahead': people_ahead,
             'status': queue_entry.status,
             'doctor_name': str(queue_entry.queue.doctor),
             'last_updated': timezone.now().strftime("%H:%M")
         })
+
+
 class PatientQueueStatusView(LoginRequiredMixin, TemplateView):
     """
     Display real-time queue status for a patient.
     Shows position, estimated time, and doctor status.
     """
     template_name = 'queues/patient_queue_status.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         patient = self.request.user.patient_profile
-        
+
         # Get the patient's active queue entry (WAITING or IN_PROGRESS)
         today = timezone.now().date()
-        
+
         queue_entry = PatientQueue.objects.filter(
             patient=patient,
             queue__date=today,
             status__in=['WAITING', 'IN_PROGRESS']
         ).first()
-        
+
         if not queue_entry:
             context['has_active_queue'] = False
             return context
-            
+
         context['has_active_queue'] = True
         context['queue_entry'] = queue_entry
         context['queue'] = queue_entry.queue
         context['doctor'] = queue_entry.queue.doctor
-        
+
         # Check if doctor has checked in (has any appointments checked in today)
         doctor_checked_in = Appointment.objects.filter(
             doctor=queue_entry.queue.doctor,
             appointment_date=today,
             status__in=['CHECKED_IN', 'IN_PROGRESS', 'COMPLETED']
         ).exists()
-        
+
         context['doctor_checked_in'] = doctor_checked_in
-        
+
         # Calculate dynamic estimated time based on current position
         current_position = queue_entry.position
         # Find how many people are ahead (WAITING with lower position)
@@ -200,7 +210,12 @@ class PatientQueueStatusView(LoginRequiredMixin, TemplateView):
             status='WAITING',
             position__lt=current_position
         ).count()
-        
+
         context['people_ahead'] = people_ahead
-        
+        estimated_time = queue_entry.queue.get_estimated_wait_time(
+            people_ahead)
+        context['estimated_time'] = estimated_time
+        context['estimated_time_display'] = PatientQueue.format_minutes(
+            estimated_time)
+
         return context

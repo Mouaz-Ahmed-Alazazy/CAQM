@@ -17,16 +17,16 @@ class NurseService:
     def get_assigned_doctor_queue(nurse):
         """
         Get the current day's queue for the nurse's assigned doctor.
+        Returns None if checking in has not happened yet (Queue doesn't exist).
         """
         if not nurse.assigned_doctor:
             return None
 
         today = timezone.now().date()
-        queue, created = Queue.objects.get_or_create(
+        return Queue.objects.filter(
             doctor=nurse.assigned_doctor,
             date=today
-        )
-        return queue
+        ).first()
 
     @staticmethod
     def get_queue_patients(queue):
@@ -109,8 +109,16 @@ class NurseService:
             if not CheckInService.is_doctor_checked_in(patient_queue.queue.doctor, patient_queue.queue.date):
                 return False, "Doctor hasn't checked in yet."
 
-            if patient_queue.status != 'WAITING':
+            if patient_queue.status not in ['WAITING', 'EMERGENCY']:
                 return False, "Patient is not in waiting status"
+
+            active_consultation = PatientQueue.objects.filter(
+                queue=patient_queue.queue,
+                status='IN_PROGRESS'
+            ).exclude(pk=patient_queue.pk).first()
+
+            if active_consultation:
+                return False, f"Please complete consultation with {active_consultation.patient} first"
 
             patient_queue.status = 'IN_PROGRESS'
             patient_queue.consultation_start_time = timezone.now()

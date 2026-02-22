@@ -8,16 +8,20 @@ from io import BytesIO
 from django.core.files import File
 from PIL import Image
 
+
 class Queue(models.Model):
     """
     Represents a queue for a specific doctor on a specific date.
     """
-    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='queues')
+    doctor = models.ForeignKey(
+        Doctor, on_delete=models.CASCADE, related_name='queues')
     date = models.DateField(default=timezone.now)
-    qrcode = models.CharField(max_length=255, blank=True, null=True, help_text="String representation of the QR code data")
-    qrcode_image = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
+    qrcode = models.CharField(max_length=255, blank=True, null=True,
+                              help_text="String representation of the QR code data")
+    qrcode_image = models.ImageField(
+        upload_to='qr_codes/', blank=True, null=True)
     qrcode_generated_at = models.DateTimeField(blank=True, null=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -33,9 +37,13 @@ class Queue(models.Model):
         """
         Generates a unique QR code for the queue.
         The QR code data could be a URL or a unique identifier string.
-        Here we use a combination of doctor ID and date.
+        Here we use a combination of a random token, doctor ID and date.
         """
-        qr_data = f"QUEUE-{self.doctor.pk}-{self.date.strftime('%Y%m%d')}"
+        import secrets
+        import json
+        import os
+        token = secrets.token_hex(4).upper()
+        qr_data = f"QUEUE-{token}-{self.doctor.pk}-{self.date.strftime('%Y%m%d')}"
         self.qrcode = qr_data
         self.qrcode_generated_at = timezone.now()
 
@@ -49,14 +57,43 @@ class Queue(models.Model):
         qr.make(fit=True)
 
         img = qr.make_image(fill_color="black", back_color="white")
-        
+
         # Save image to BytesIO buffer
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         file_name = f"qr_queue_{self.doctor.pk}_{self.date.strftime('%Y%m%d')}.png"
-        
+
         # Save image file to the model field
         self.qrcode_image.save(file_name, File(buffer), save=False)
+        
+        # Append to codes.json in media/qr_codes directory
+        try:
+            codes_file = os.path.join(settings.MEDIA_ROOT, 'qr_codes', 'codes.json')
+            os.makedirs(os.path.dirname(codes_file), exist_ok=True)
+            codes = []
+            if os.path.exists(codes_file):
+                with open(codes_file, 'r') as f:
+                    try:
+                        codes = json.load(f)
+                    except json.JSONDecodeError:
+                        pass
+            
+            codes.append({
+                'doctor_id': self.doctor.pk,
+                'doctor_name': str(self.doctor.user.get_full_name()),
+                'date': self.date.strftime('%Y-%m-%d'),
+                'token': token,
+                'qr_data': qr_data,
+                'generated_at': self.qrcode_generated_at.isoformat()
+            })
+            
+            with open(codes_file, 'w') as f:
+                json.dump(codes, f, indent=4)
+        except Exception as e:
+            # Log the error but don't fail the code generation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to append QR code to codes.json: {e}")
 
     def save(self, *args, **kwargs):
         if not self.qrcode_image:
@@ -68,7 +105,7 @@ class Queue(models.Model):
 
     def is_empty(self):
         return self.patient_queues.count() == 0
-    
+
     def get_estimated_wait_time(self, position):
         """
         Calculate dynamic wait time based on average consultation duration.
@@ -80,32 +117,35 @@ class Queue(models.Model):
             consultation_start_time__isnull=False,
             consultation_end_time__isnull=False
         ).order_by('-consultation_end_time')[:5]
-        
-        durations = [q.get_consultation_duration() for q in recent_consultations if q.get_consultation_duration() > 0]
-        
-        default_duration = getattr(settings, 'DEFAULT_CONSULTATION_DURATION', 20)
-        avg_duration = sum(durations) / len(durations) if durations else default_duration
-        return int(position * avg_duration)
-    
+
+        durations = [q.get_consultation_duration(
+        ) for q in recent_consultations if q.get_consultation_duration() > 0]
+
+        default_duration = getattr(
+            settings, 'DEFAULT_CONSULTATION_DURATION', 20)
+        avg_duration = sum(durations) / \
+            len(durations) if durations else default_duration
+        return int(max(0, position - 1) * avg_duration)
+
     def enqueue(self, patient_id):
         """
         Add a patient to the queue.
         """
         from patients.models import Patient
-        
+
         if isinstance(patient_id, Patient):
             patient = patient_id
         else:
             patient = Patient.objects.get(pk=patient_id)
-        
+
         patient_queue = PatientQueue.objects.create(
             queue=self,
             patient=patient,
             status='WAITING'
         )
-        
+
         return patient_queue
-    
+
     def dequeue(self):
         """
         Remove and return the next patient from the queue (FIFO).
@@ -113,19 +153,19 @@ class Queue(models.Model):
         next_patient = self.patient_queues.filter(
             status='WAITING'
         ).order_by('position').first()
-        
+
         if next_patient:
             next_patient.status = 'IN_PROGRESS'
             next_patient.save()
-        
+
         return next_patient
-    
+
     def validate_qrcode(self, code):
         """
         Validate if a QR code matches this queue.
         """
         return self.qrcode == code
-    
+
     def get_qrcode_image(self):
         """
         Get the QR code image URL.
@@ -147,18 +187,22 @@ class PatientQueue(models.Model):
         ('NO_SHOW', 'No Show'),
     ]
 
-    queue = models.ForeignKey(Queue, on_delete=models.CASCADE, related_name='patient_queues')
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='queue_entries')
+    queue = models.ForeignKey(
+        Queue, on_delete=models.CASCADE, related_name='patient_queues')
+    patient = models.ForeignKey(
+        Patient, on_delete=models.CASCADE, related_name='queue_entries')
     position = models.PositiveIntegerField()
     check_in_time = models.TimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='WAITING')
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='WAITING')
     is_emergency = models.BooleanField(default=False)
     checkedin_via_qrcode = models.BooleanField(default=False)
-    
+
     consultation_start_time = models.DateTimeField(null=True, blank=True)
     consultation_end_time = models.DateTimeField(null=True, blank=True)
-    
-    estimated_time = models.IntegerField(help_text="Estimated wait time in minutes", default=0)
+
+    estimated_time = models.IntegerField(
+        help_text="Estimated wait time in minutes", default=0)
 
     class Meta:
         db_table = 'patient_queues'
@@ -178,12 +222,13 @@ class PatientQueue(models.Model):
                     models.Max('position')
                 )['position__max']
                 self.position = (last_position or 0) + 1
-            
+
             # Calculate estimated time
-            self.estimated_time = self.queue.get_estimated_wait_time(self.position)
-            
+            self.estimated_time = self.queue.get_estimated_wait_time(
+                self.position)
+
         super().save(*args, **kwargs)
-    
+
     def update_status(self, new_status=None):
         """
         Update the patient's queue status.
@@ -196,27 +241,49 @@ class PatientQueue(models.Model):
                 self.status = 'IN_PROGRESS'
             elif self.status == 'IN_PROGRESS':
                 self.status = 'TERMINATED'
-        
+
         self.save()
-    
+
     def get_wait_time(self):
         """
         Calculate current wait time based on check-in time.
         """
         from django.utils import timezone
         from datetime import datetime
-        
+
         if not self.check_in_time:
             return 0
-        
+
         now = timezone.now()
         check_in_datetime = datetime.combine(now.date(), self.check_in_time)
-        
+
         if timezone.is_aware(now):
             check_in_datetime = timezone.make_aware(check_in_datetime)
-        
+
         delta = now - check_in_datetime
         return int(delta.total_seconds() / 60)
+
+    @staticmethod
+    def format_minutes(minutes):
+        """
+        Format minutes into a human-friendly label (e.g., "45 min", "1 hr 15 min").
+        """
+        total_minutes = max(0, int(minutes or 0))
+        if total_minutes <= 0:
+            return "Soon"
+        if total_minutes < 60:
+            return f"{total_minutes} min"
+
+        hours = total_minutes // 60
+        remainder = total_minutes % 60
+
+        hour_label = "hr" if hours == 1 else "hrs"
+        if remainder == 0:
+            return f"{hours} {hour_label}"
+        return f"{hours} {hour_label} {remainder} min"
+
+    def get_wait_time_display(self):
+        return self.format_minutes(self.get_wait_time())
 
     def get_consultation_duration(self):
         """
@@ -226,7 +293,13 @@ class PatientQueue(models.Model):
             delta = self.consultation_end_time - self.consultation_start_time
             return int(delta.total_seconds() / 60)
         return 0
-    
+
+    def get_consultation_duration_display(self):
+        return self.format_minutes(self.get_consultation_duration())
+
+    def get_estimated_time_display(self):
+        return self.format_minutes(self.estimated_time)
+
     def mark_as_emergency(self):
         """
         Mark this patient as emergency and move to front of queue.
@@ -234,20 +307,20 @@ class PatientQueue(models.Model):
         self.is_emergency = True
         self.status = 'EMERGENCY'
         self.save()
-        
+
         # Move to front (position 1) and shift others
         other_patients = PatientQueue.objects.filter(
             queue=self.queue,
             position__lt=self.position
         ).order_by('position')
-        
+
         for patient_q in other_patients:
             patient_q.position += 1
             patient_q.save()
-        
+
         self.position = 1
         self.save()
-    
+
     def update_position(self, new_position):
         """
         Update patient's position in the queue.
@@ -256,7 +329,7 @@ class PatientQueue(models.Model):
         self.position = new_position
         self.estimated_time = self.queue.get_estimated_wait_time(new_position)
         self.save()
-        
+
         # Adjust other patients' positions
         if new_position < old_position:
             # Moving up - shift others down

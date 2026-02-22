@@ -126,7 +126,7 @@ document.getElementById('call-next-btn').addEventListener('click', function() {
                     </div>
                     <div class="col-md-3">
                         <span class="text-muted">Wait time:</span>
-                        <strong>{{ current_patient.get_wait_time }} min</strong>
+                        <strong>{{ current_patient.get_wait_time_display }}</strong>
                     </div>
                     <div class="col-md-4 text-md-end">
                         <form method="post" action="{% url 'nurses:end_consultation' current_patient.pk %}">
@@ -186,9 +186,9 @@ document.getElementById('call-next-btn').addEventListener('click', function() {
                                 <td>{{ pq.check_in_time|time:"h:i A" }}</td>
                                 <td>
                                     {% if pq.status == 'TERMINATED' %}
-                                    {{ pq.get_consultation_duration }} min
+                                    {{ pq.get_consultation_duration_display }}
                                     {% else %}
-                                    {{ pq.get_wait_time }} min
+                                    {{ pq.get_wait_time_display }}
                                     {% endif %}
                                 </td>
                                 <td>
@@ -205,11 +205,11 @@ document.getElementById('call-next-btn').addEventListener('click', function() {
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if pq.status == 'WAITING' %}
+                                    {% if pq.status == 'WAITING' or pq.status == 'EMERGENCY' %}
                                         {% if not current_patient %}
                                         <form method="post" action="{% url 'nurses:start_consultation' pq.pk %}" style="display: inline;">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-success" title="Start Consultation">
+                                            <button type="submit" class="btn btn-sm {% if pq.status == 'EMERGENCY' %}btn-danger{% else %}btn-success{% endif %}" title="Start Consultation">
                                                 <i class="fas fa-play"></i>
                                             </button>
                                         </form>

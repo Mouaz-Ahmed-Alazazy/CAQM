@@ -143,11 +143,7 @@
                         <div class="info-label">Estimated Wait Time</div>
                         <div class="info-value text-primary">
                             <i class="far fa-clock me-2"></i>
-                            {% if queue_entry.estimated_time > 0 %}
-                            {{ queue_entry.estimated_time }} mins
-                            {% else %}
-                            Soon
-                            {% endif %}
+                            {{ estimated_time_display }}
                         </div>
                     </div>
 
@@ -201,6 +197,19 @@
 </div>
 
 <script>
+    function formatMinutes(minutes) {
+        const total = Math.max(0, parseInt(minutes || 0, 10));
+        if (total <= 0) return 'Soon';
+        if (total < 60) return `${total} min`;
+
+        const hours = Math.floor(total / 60);
+        const remainder = total % 60;
+        const hourLabel = hours === 1 ? 'hr' : 'hrs';
+
+        if (remainder === 0) return `${hours} ${hourLabel}`;
+        return `${hours} ${hourLabel} ${remainder} min`;
+    }
+
     function updateQueueStatus() {
         fetch('{% url "queues:queue_status_api" %}')
             .then(response => response.json())
@@ -208,11 +217,8 @@
                 if (data.has_active_queue) {
                     document.querySelector('.position-number').textContent = data.position;
                     const waitTimeElement = document.querySelector('.info-value.text-primary');
-                    if (data.estimated_time > 0) {
-                        waitTimeElement.innerHTML = `<i class="far fa-clock me-2"></i> ${data.estimated_time} mins`;
-                    } else {
-                        waitTimeElement.innerHTML = `<i class="far fa-clock me-2"></i> Soon`;
-                    }
+                    const waitDisplay = data.estimated_time_display || formatMinutes(data.estimated_time);
+                    waitTimeElement.innerHTML = `<i class="far fa-clock me-2"></i> ${waitDisplay}`;
                     document.querySelectorAll('.info-value')[1].textContent = `${data.people_ahead} patients`;
                     document.getElementById('last-updated').textContent = data.last_updated;
                     
