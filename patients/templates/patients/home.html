@@ -36,8 +36,7 @@
                         <select class="form-select bg-light" id="specialty" name="specialty">
                             <option value="">All Specialties</option>
                             {% for code, label in specialty_choices %}
-                            <option value="{{ code }}" {% if current_filters.specialty == code %}selected{% endif %}>{{
-                                label }}</option>
+                            <option value="{{ code }}" {% if current_filters.specialty == code %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -46,8 +45,7 @@
                         <select class="form-select bg-light" id="gender" name="gender">
                             <option value="">All Genders</option>
                             {% for code, label in gender_choices %}
-                            <option value="{{ code }}" {% if current_filters.gender == code %}selected{% endif %}>{{ label
-                                }}</option>
+                            <option value="{{ code }}" {% if current_filters.gender == code %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -100,8 +98,7 @@
                                     <span class="fw-medium text-secondary"
                                         style="width: 80px;">{{availability.get_day_of_week_display}}</span>
                                     <span
-                                        class="text-muted bg-light px-2 py-1 rounded">{{availability.start_time|time:"H:i"
-                                        }} - {{availability.end_time|time:"H:i"}}</span>
+                                        class="text-muted bg-light px-2 py-1 rounded">{{ availability.start_time|time:"H:i" }} - {{availability.end_time|time:"H:i"}}</span>
                                 </div>
                                 {% empty %}
                                 <p class="small text-muted fst-italic mb-0">No availability set.</p>

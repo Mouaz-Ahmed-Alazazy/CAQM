@@ -146,8 +146,7 @@
                             <select class="form-select" id="assigned_doctor" name="assigned_doctor">
                                 <option value="">None - Assign Later</option>
                                 {% for doctor in doctors %}
-                                <option value="{{ doctor.pk }}" {% if nurse_profile and nurse_profile.assigned_doctor
-                                    and nurse_profile.assigned_doctor.pk == doctor.pk %}selected{% endif %}>
+                                <option value="{{ doctor.pk }}" {% if nurse_profile and nurse_profile.assigned_doctor and nurse_profile.assigned_doctor.pk == doctor.pk %}selected{% endif %}>
                                     Dr. {{ doctor.user.get_full_name }} - {{ doctor.get_specialization_display }}
                                 </option>
                                 {% endfor %}
