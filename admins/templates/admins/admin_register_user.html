@@ -12,31 +12,34 @@
                     <h4><i class="fas fa-user-plus"></i> Register New User (Admin)</h4>
                 </div>
                 <div class="card-body">
-                    <form method="post" id="registerForm" novalidate>
+                    <form method="post" id="registerForm" enctype="multipart/form-data" novalidate>
                         {% csrf_token %}
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
                                 <input type="email" class="form-control" id="email" name="email" required
-                                       placeholder="user@example.com">
+                                    placeholder="user@example.com">
                                 <div class="invalid-feedback" id="email-error">Please enter a valid email address.</div>
                             </div>
 
                             <div class="col-md-6 mb-3">
-                                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                <label for="password" class="form-label">Password <span
+                                        class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <input type="password" class="form-control" id="password" name="password" required
-                                           minlength="8">
+                                        minlength="8">
                                     <button class="btn btn-outline-secondary" type="button" id="togglePassword"
-                                            title="Show/Hide Password" aria-label="Toggle password visibility">
+                                        title="Show/Hide Password" aria-label="Toggle password visibility">
                                         <i class="fas fa-eye" id="togglePasswordIcon"></i>
                                     </button>
                                 </div>
-                                <div class="invalid-feedback" id="password-error">Password must be at least 8 characters.</div>
+                                <div class="invalid-feedback" id="password-error">Password must be at least 8
+                                    characters.</div>
                                 <div class="mt-1" id="password-strength-bar" style="display:none;">
                                     <div class="progress" style="height: 5px;">
-                                        <div class="progress-bar" id="strength-meter" role="progressbar" style="width: 0%;"></div>
+                                        <div class="progress-bar" id="strength-meter" role="progressbar"
+                                            style="width: 0%;"></div>
                                     </div>
                                     <small id="strength-text" class="text-muted"></small>
                                 </div>
@@ -46,21 +49,25 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="password_confirm" class="form-label">Confirm Password <span class="text-danger">*</span></label>
-                                <input type="password" class="form-control" id="password_confirm" required minlength="8">
+                                <label for="password_confirm" class="form-label">Confirm Password <span
+                                        class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="password_confirm" required
+                                    minlength="8">
                                 <div class="invalid-feedback" id="password-confirm-error">Passwords do not match.</div>
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <label for="first_name" class="form-label">First Name <span
+                                        class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="first_name" name="first_name" required>
                                 <div class="invalid-feedback">First name is required.</div>
                             </div>
 
                             <div class="col-md-6 mb-3">
-                                <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <label for="last_name" class="form-label">Last Name <span
+                                        class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="last_name" name="last_name" required>
                                 <div class="invalid-feedback">Last name is required.</div>
                             </div>
@@ -70,9 +77,9 @@
                             <div class="col-md-6 mb-3">
                                 <label for="phone" class="form-label">Phone <span class="text-danger">*</span></label>
                                 <input type="tel" class="form-control" id="phone" name="phone" required
-                                       pattern="[0-9]{10,15}" title="Enter 10-15 digits"
-                                       placeholder="e.g. 0123456789">
-                                <div class="invalid-feedback" id="phone-error">Enter a valid phone number (10-15 digits).</div>
+                                    pattern="[0-9]{10,15}" title="Enter 10-15 digits" placeholder="e.g. 0123456789">
+                                <div class="invalid-feedback" id="phone-error">Enter a valid phone number (10-15
+                                    digits).</div>
                             </div>
 
                             <div class="col-md-6 mb-3">
@@ -90,8 +97,10 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="date_of_birth" class="form-label">Date of Birth <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+                                <label for="date_of_birth" class="form-label">Date of Birth <span
+                                        class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth"
+                                    required>
                                 <div class="invalid-feedback" id="dob-error">Please enter a valid date of birth.</div>
                             </div>
 
@@ -112,8 +121,8 @@
                                 <div class="col-md-6 mb-3">
                                     <label for="emergency_contact" class="form-label">Emergency Contact</label>
                                     <input type="tel" class="form-control" id="emergency_contact"
-                                        name="emergency_contact" pattern="[0-9]{10,15}"
-                                        title="Enter 10-15 digits" placeholder="e.g. 0123456789">
+                                        name="emergency_contact" pattern="[0-9]{10,15}" title="Enter 10-15 digits"
+                                        placeholder="e.g. 0123456789">
                                     <div class="invalid-feedback">Enter a valid phone number (10-15 digits).</div>
                                 </div>
 
@@ -148,6 +157,14 @@
                                     <input type="text" class="form-control" id="license_number" name="license_number">
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="profile_photo" class="form-label">Profile Photo</label>
+                                    <input class="form-control" type="file" id="profile_photo" name="profile_photo"
+                                        accept="image/*">
+                                    <div class="form-text">Choose a professional headshot.</div>
+                                </div>
+                            </div>
                         </div>
 
                         <div id="nurse-fields" style="display: none;">
@@ -162,16 +179,19 @@
                                     <option value="">None - Assign Later</option>
                                 </select>
                                 <div id="doctor-load-error" class="text-danger mt-1" style="display:none;">
-                                    <small><i class="fas fa-exclamation-circle"></i> Could not load doctors list. You can still register the nurse.</small>
+                                    <small><i class="fas fa-exclamation-circle"></i> Could not load doctors list. You
+                                        can still register the nurse.</small>
                                 </div>
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-between mt-4">
-                            <a href="{% url 'admins:admin_user_list' %}" class="btn btn-secondary" aria-label="Back to user list">
+                            <a href="{% url 'admins:admin_user_list' %}" class="btn btn-secondary"
+                                aria-label="Back to user list">
                                 <i class="fas fa-arrow-left"></i> Back to List
                             </a>
-                            <button type="submit" class="btn btn-danger" id="submitBtn" aria-label="Register new user with provided information">
+                            <button type="submit" class="btn btn-danger" id="submitBtn"
+                                aria-label="Register new user with provided information">
                                 <i class="fas fa-check-circle"></i> Register User
                             </button>
                         </div>
@@ -288,7 +308,7 @@
         input.classList.add('is-invalid');
         input.classList.remove('is-valid');
         const feedback = input.closest('.mb-3')?.querySelector('.invalid-feedback')
-                         || input.parentElement.querySelector('.invalid-feedback');
+            || input.parentElement.querySelector('.invalid-feedback');
         if (feedback && msg) feedback.textContent = msg;
     }
 
@@ -398,11 +418,11 @@
     });
 
     const fieldsToWatch = ['email', 'password', 'password_confirm', 'phone', 'first_name', 'last_name', 'date_of_birth', 'role', 'gender'];
-    fieldsToWatch.forEach(function(id) {
+    fieldsToWatch.forEach(function (id) {
         const el = document.getElementById(id);
         if (el) {
-            el.addEventListener('input', function() { clearValidation(this); });
-            el.addEventListener('change', function() { clearValidation(this); });
+            el.addEventListener('input', function () { clearValidation(this); });
+            el.addEventListener('change', function () { clearValidation(this); });
         }
     });
 </script>

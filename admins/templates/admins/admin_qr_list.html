@@ -1,0 +1,75 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+{% block title %}Today's QR Codes - CAQM{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+            <h4><i class="fas fa-qrcode"></i> Today's Queue QR Codes</h4>
+            <span class="badge bg-light text-danger">{{ queues|length }} Active</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-4">
+                Below are the QR codes generated for today's active queues ({{ today|date:"F d, Y" }}).
+                Patients can scan these or use the raw code directly.
+            </p>
+
+            <div class="row g-4">
+                {% for queue in queues %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-light border-bottom-0 pb-0 pt-3">
+                            <h5 class="card-title fw-bold mb-0 text-center text-primary">Dr. {{ queue.doctor.user.get_full_name }}</h5>
+                            <p class="text-center text-muted small mb-2">{{ queue.doctor.get_specialization_display }}</p>
+                        </div>
+                        <div
+                            class="card-body text-center d-flex flex-column justify-content-center align-items-center pt-2">
+                            {% if queue.qrcode_image %}
+                            <div class="p-2 bg-white rounded border mb-3 shadow-sm d-inline-block">
+                                <img src="{{ queue.qrcode_image.url }}"
+                                    alt="QR Code for Dr. {{ queue.doctor.user.get_full_name }}" class="img-fluid"
+                                    style="max-height: 200px; width: auto;">
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning py-4 mb-3 w-100">
+                                <i class="fas fa-exclamation-triangle fa-2x mb-2 text-warning d-block"></i>
+                                Image not available
+                            </div>
+                            {% endif %}
+
+                            <div class="input-group input-group-sm mt-auto w-100">
+                                <span class="input-group-text bg-light text-muted"><i class="fas fa-key"></i></span>
+                                <input type="text" class="form-control text-center font-monospace bg-light"
+                                    value="{{ queue.qrcode }}" readonly>
+                                <button class="btn btn-outline-secondary" type="button"
+                                    onclick="navigator.clipboard.writeText('{{ queue.qrcode }}'); this.innerHTML='<i class=\'fas fa-check\'></i>'; setTimeout(() => this.innerHTML='<i class=\'fas fa-copy\'></i>', 2000);"
+                                    title="Copy Code">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted mt-2 d-block">Generated: {{ queue.qrcode_generated_at|time:"H:i" }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5">
+                    <div class="display-1 text-muted mb-3">
+                        <i class="fas fa-qrcode opacity-25"></i>
+                    </div>
+                    <h4 class="text-muted">No QR Codes Generated Today</h4>
+                    <p class="text-muted mb-0">Doctors need to check in or queues must be initiated first.</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="{% url 'admins:admin_dashboard' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

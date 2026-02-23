@@ -92,13 +92,12 @@ class CheckInService:
     def is_doctor_checked_in(doctor, date):
         """
         Check if doctor has checked in for the given date.
-        Doctor is considered checked-in if any of their appointments for that date
-        has status CHECKED_IN, IN_PROGRESS, or COMPLETED.
         """
-        return Appointment.objects.filter(
+        from .models import Queue
+        return Queue.objects.filter(
             doctor=doctor,
-            appointment_date=date,
-            status__in=['CHECKED_IN', 'IN_PROGRESS', 'COMPLETED']
+            date=date,
+            doctor_check_in_time__isnull=False
         ).exists()
 
     @staticmethod
@@ -165,8 +164,16 @@ class CheckInService:
                 if today_now > today_start + timedelta(minutes=30):
                     return False, f"Check-in rejected: It is more than 30 minutes past your first appointment at {earliest_appointment.start_time.strftime('%H:%M')}.", 0
 
+            # Check if doctor has already checked in to the queue
+            if queue.doctor_check_in_time:
+                return False, "You have already checked in for today.", appointments_count
+
             # Update all appointments to CHECKED_IN status
             appointments.update(status='CHECKED_IN')
+            
+            # Record the doctor's check in time in the queue
+            queue.doctor_check_in_time = timezone.now()
+            queue.save()
 
             logger.info(
                 f"Doctor {doctor.pk} checked in for {appointments_count} consultations on {date}")
@@ -236,6 +243,15 @@ class CheckInService:
             return {
                 'success': False,
                 'message': 'Invalid QR code format.',
+                'data': None
+            }
+
+        # Validate that the QR code date matches today
+        today = timezone.localtime().date()
+        if date != today:
+            return {
+                'success': False,
+                'message': f"Scan rejected: This QR code is for {date.strftime('%b %d, %Y')}, but today is {today.strftime('%b %d, %Y')}. You can only check in on the day of the appointment.",
                 'data': None
             }
 

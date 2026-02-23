@@ -21,6 +21,8 @@ class Queue(models.Model):
     qrcode_image = models.ImageField(
         upload_to='qr_codes/', blank=True, null=True)
     qrcode_generated_at = models.DateTimeField(blank=True, null=True)
+    doctor_check_in_time = models.DateTimeField(blank=True, null=True, 
+        help_text="Time when the doctor checked in for this queue")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -108,24 +110,36 @@ class Queue(models.Model):
 
     def get_estimated_wait_time(self, position):
         """
-        Calculate dynamic wait time based on average consultation duration.
-        Defaults to 20 mins if no data is available.
+        Calculate dynamic wait time based on the doctor's official slot duration
+        and the remaining time of the currently progressing consultation.
         """
-        recent_consultations = PatientQueue.objects.filter(
-            queue__doctor=self.doctor,
-            status='TERMINATED',
-            consultation_start_time__isnull=False,
-            consultation_end_time__isnull=False
-        ).order_by('-consultation_end_time')[:5]
-
-        durations = [q.get_consultation_duration(
-        ) for q in recent_consultations if q.get_consultation_duration() > 0]
-
-        default_duration = getattr(
-            settings, 'DEFAULT_CONSULTATION_DURATION', 20)
-        avg_duration = sum(durations) / \
-            len(durations) if durations else default_duration
-        return int(max(0, position - 1) * avg_duration)
+        people_ahead = max(0, position - 1)
+        
+        # Get doctor's official slot duration for this day
+        from doctors.models import DoctorAvailability
+        day_of_week = self.date.strftime('%A').upper()
+        availability = DoctorAvailability.objects.filter(
+            doctor=self.doctor,
+            day_of_week=day_of_week,
+            is_active=True
+        ).first()
+        
+        slot_duration = availability.slot_duration if availability else getattr(settings, 'DEFAULT_CONSULTATION_DURATION', 20)
+        
+        # Check active consultation remaining time
+        active_consultation = PatientQueue.objects.filter(
+            queue=self,
+            status='IN_PROGRESS',
+            consultation_start_time__isnull=False
+        ).first()
+        
+        remaining_time = 0
+        if active_consultation:
+            elapsed_time = timezone.now() - active_consultation.consultation_start_time
+            elapsed_minutes = elapsed_time.total_seconds() / 60.0
+            remaining_time = max(0, slot_duration - elapsed_minutes)
+            
+        return int((people_ahead * slot_duration) + remaining_time)
 
     def enqueue(self, patient_id):
         """

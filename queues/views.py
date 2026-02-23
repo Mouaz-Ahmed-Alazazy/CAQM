@@ -171,6 +171,21 @@ class PatientQueueStatusView(LoginRequiredMixin, TemplateView):
     """
     template_name = 'queues/patient_queue_status.html'
 
+    def get(self, request, *args, **kwargs):
+        patient = request.user.patient_profile
+        today = timezone.now().date()
+
+        queue_entry = PatientQueue.objects.filter(
+            patient=patient,
+            queue__date=today,
+            status__in=['WAITING', 'IN_PROGRESS']
+        ).first()
+
+        if not queue_entry:
+            return redirect('queues:qr_scanner')
+            
+        return super().get(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         patient = self.request.user.patient_profile
@@ -183,10 +198,6 @@ class PatientQueueStatusView(LoginRequiredMixin, TemplateView):
             queue__date=today,
             status__in=['WAITING', 'IN_PROGRESS']
         ).first()
-
-        if not queue_entry:
-            context['has_active_queue'] = False
-            return context
 
         context['has_active_queue'] = True
         context['queue_entry'] = queue_entry

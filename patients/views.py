@@ -52,12 +52,42 @@ class HomePageView(LoginRequiredMixin, PatientRequiredMixin, ListView):
     context_object_name = 'doctors'
 
     def get_queryset(self):
-        """Get all doctors"""
-        return Doctor.objects.select_related('user').prefetch_related('availability').all()
+        """Get all doctors with filtering"""
+        queryset = Doctor.objects.select_related('user').prefetch_related('availability').all()
+        
+        # Apply filters
+        name_search = self.request.GET.get('name_search', '').strip()
+        specialty = self.request.GET.get('specialty', '')
+        gender = self.request.GET.get('gender', '')
+        
+        if name_search:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(user__first_name__icontains=name_search) | 
+                Q(user__last_name__icontains=name_search)
+            )
+            
+        if specialty:
+            queryset = queryset.filter(specialization=specialty)
+            
+        if gender:
+            queryset = queryset.filter(user__gender=gender)
+            
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['doctors'] = self.get_queryset()
+        context['specialty_choices'] = Doctor._meta.get_field('specialization').choices
+        context['gender_choices'] = [
+            ('MALE', 'Male'),
+            ('FEMALE', 'Female')
+        ]
+        context['current_filters'] = {
+            'name_search': self.request.GET.get('name_search', ''),
+            'specialty': self.request.GET.get('specialty', ''),
+            'gender': self.request.GET.get('gender', '')
+        }
         return context
 
 

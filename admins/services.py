@@ -148,15 +148,24 @@ class AdminService:
                 patient.save()
 
             elif user.role == 'DOCTOR':
-                specialization = kwargs.get('specialization')
-                if not specialization:
-                    return False, 'Specialization is required for doctors'
-
-                doctor, _ = Doctor.objects.get_or_create(
-                    user=user, defaults={'specialization': specialization})
-                doctor.specialization = specialization
+                doctor, _ = Doctor.objects.get_or_create(user=user)
+                doctor.specialization = kwargs.get(
+                    'specialization', doctor.specialization)
                 doctor.license_number = kwargs.get(
                     'license_number', doctor.license_number)
+                    
+                if 'profile_photo' in kwargs:
+                    if kwargs['profile_photo'] is None:
+                        # Handle photo deletion
+                        if doctor.profile_photo:
+                            doctor.profile_photo.delete(save=False)
+                        doctor.profile_photo = None
+                    else:
+                        # Handle new photo upload
+                        if doctor.profile_photo:
+                            doctor.profile_photo.delete(save=False)
+                        doctor.profile_photo = kwargs['profile_photo']
+                        
                 doctor.save()
 
             elif user.role == 'NURSE':

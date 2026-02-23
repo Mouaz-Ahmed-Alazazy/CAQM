@@ -60,8 +60,8 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'queues:qr_scanner' %}">
-                            <i class="fas fa-qrcode"></i> Scan QR Code
+                        <a class="nav-link" href="{% url 'queues:queue_status' %}">
+                            <i class="fas fa-list-ol"></i> Queue
                         </a>
                     </li>
                     {% elif user.is_doctor %}
@@ -71,8 +71,8 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'queues:qr_scanner' %}">
-                            <i class="fas fa-qrcode"></i> Scan QR Code
+                        <a class="nav-link" href="{% url 'doctors:queue_redirect' %}">
+                            <i class="fas fa-list-ol"></i> Queue
                         </a>
                     </li>
                     {% elif user.is_nurse %}

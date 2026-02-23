@@ -15,6 +15,51 @@
             </p>
         </div>
 
+        <!-- Filter Bar -->
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-4">
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="name_search" class="form-label text-muted small fw-bold text-uppercase">Doctor
+                            Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i
+                                    class="fas fa-search text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0 ps-0 text-dark" id="name_search"
+                                name="name_search" placeholder="Search by name..."
+                                value="{{ current_filters.name_search }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="specialty"
+                            class="form-label text-muted small fw-bold text-uppercase">Specialty</label>
+                        <select class="form-select bg-light" id="specialty" name="specialty">
+                            <option value="">All Specialties</option>
+                            {% for code, label in specialty_choices %}
+                            <option value="{{ code }}" {% if current_filters.specialty == code %}selected{% endif %}>{{
+                                label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="gender" class="form-label text-muted small fw-bold text-uppercase">Gender</label>
+                        <select class="form-select bg-light" id="gender" name="gender">
+                            <option value="">All Genders</option>
+                            {% for code, label in gender_choices %}
+                            <option value="{{ code }}" {% if current_filters.gender == code %}selected{% endif %}>{{ label
+                                }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100 shadow-sm">
+                            <i class="fas fa-filter me-2"></i> Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="row g-4">
             {% for doctor in doctors %}
             <div class="col-sm-6 col-lg-4">
@@ -22,10 +67,16 @@
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex align-items-center mb-4">
                             <div class="flex-shrink-0">
+                                {% if doctor.profile_photo %}
+                                <img src="{{ doctor.profile_photo.url }}" alt="Dr. {{ doctor.user.get_full_name }}"
+                                    class="rounded-circle shadow-sm border border-2 border-white object-fit-cover"
+                                    style="width: 64px; height: 64px;">
+                                {% else %}
                                 <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow-sm"
                                     style="width: 64px; height: 64px; font-size: 1.5rem; font-weight: bold;">
                                     {{ doctor.user.first_name|first }}{{ doctor.user.last_name|first }}
                                 </div>
+                                {% endif %}
                             </div>
                             <div class="ms-3">
                                 <h5 class="card-title fw-bold mb-1">Dr. {{ doctor.user.get_full_name }}</h5>
@@ -36,7 +87,7 @@
                         </div>
 
                         <p class="card-text text-muted small mb-4 flex-grow-1"
-                            style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                            style="display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                             {{ doctor.bio|default:"No bio available." }}
                         </p>
 
@@ -46,8 +97,11 @@
                             <div class="availability-list mb-3">
                                 {% for availability in doctor.availability.all %}
                                 <div class="d-flex justify-content-between align-items-center small mb-1">
-                                    <span class="fw-medium text-secondary" style="width: 80px;">{{availability.get_day_of_week_display}}</span>
-                                    <span class="text-muted bg-light px-2 py-1 rounded">{{availability.start_time|time:"H:i" }} - {{availability.end_time|time:"H:i"}}</span>
+                                    <span class="fw-medium text-secondary"
+                                        style="width: 80px;">{{availability.get_day_of_week_display}}</span>
+                                    <span
+                                        class="text-muted bg-light px-2 py-1 rounded">{{availability.start_time|time:"H:i"
+                                        }} - {{availability.end_time|time:"H:i"}}</span>
                                 </div>
                                 {% empty %}
                                 <p class="small text-muted fst-italic mb-0">No availability set.</p>

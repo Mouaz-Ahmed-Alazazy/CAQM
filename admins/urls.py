@@ -12,6 +12,7 @@ from .views import (
     AdminCancelDoctorAppointmentsView,
     AdminBookAppointmentView,
     AdminBookEmergencyView,
+    AdminQRListView,
 )
 from .api import DoctorListAPIView
 
@@ -39,5 +40,6 @@ urlpatterns = [
          name='admin_book_appointment'),
     path('book-emergency/', AdminBookEmergencyView.as_view(),
          name='admin_book_emergency'),
+    path('qr-codes/', AdminQRListView.as_view(), name='admin_qr_list'),
     path('api/doctors/', DoctorListAPIView.as_view(), name='api_doctors'),
 ]

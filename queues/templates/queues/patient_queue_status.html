@@ -139,6 +139,7 @@
                 </div>
 
                 <div class="mt-4">
+                    {% if queue_entry.status != 'IN_PROGRESS' %}
                     <div class="info-item">
                         <div class="info-label">Estimated Wait Time</div>
                         <div class="info-value text-primary">
@@ -146,6 +147,7 @@
                             {{ estimated_time_display }}
                         </div>
                     </div>
+                    {% endif %}
 
                     <div class="info-item">
                         <div class="info-label">People Ahead</div>
@@ -217,14 +219,23 @@
                 if (data.has_active_queue) {
                     document.querySelector('.position-number').textContent = data.position;
                     const waitTimeElement = document.querySelector('.info-value.text-primary');
-                    const waitDisplay = data.estimated_time_display || formatMinutes(data.estimated_time);
-                    waitTimeElement.innerHTML = `<i class="far fa-clock me-2"></i> ${waitDisplay}`;
-                    document.querySelectorAll('.info-value')[1].textContent = `${data.people_ahead} patients`;
+                    if (waitTimeElement) {
+                        const waitDisplay = data.estimated_time_display || formatMinutes(data.estimated_time);
+                        waitTimeElement.innerHTML = `<i class="far fa-clock me-2"></i> ${waitDisplay}`;
+                    }
+
+                    // The "people ahead" value is the second .info-value if waitTimeElement exists
+                    // To be safe, let's select it specifically or skip if it's fragile
+                    const infoValues = document.querySelectorAll('.info-value');
+                    const peopleAheadIndex = waitTimeElement ? 1 : 0;
+                    if (infoValues[peopleAheadIndex]) {
+                        infoValues[peopleAheadIndex].textContent = `${data.people_ahead} patients`;
+                    }
                     document.getElementById('last-updated').textContent = data.last_updated;
-                    
+
                     if (data.status === 'IN_PROGRESS') {
-                         // Optionally update UI for being called
-                         location.reload(); // Hard refresh if status changed to IN_PROGRESS to show consultation UI
+                        // Optionally update UI for being called
+                        location.reload(); // Hard refresh if status changed to IN_PROGRESS to show consultation UI
                     }
                 } else {
                     location.reload(); // Refresh to show "No Active Queue" if they were removed

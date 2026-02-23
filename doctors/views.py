@@ -233,3 +233,23 @@ class DeleteAvailabilityView(LoginRequiredMixin, DoctorRequiredMixin, View):
         availability.delete()
         messages.success(request, 'Availability deleted successfully')
         return redirect('doctors:availability_management')
+
+
+class DoctorQueueRedirectView(LoginRequiredMixin, DoctorRequiredMixin, View):
+    """
+    Smart redirect that sends the doctor to Today's Appointments if they are checked in,
+    otherwise redirects them to the QR Scanner page.
+    """
+    def get(self, request, *args, **kwargs):
+        doctor = request.user.doctor_profile
+        today = timezone.now().date()
+        
+        queue = Queue.objects.filter(
+            doctor=doctor, 
+            date=today,
+            doctor_check_in_time__isnull=False
+        ).first()
+        
+        if queue:
+            return redirect('doctors:today_appointments')
+        return redirect('queues:qr_scanner')

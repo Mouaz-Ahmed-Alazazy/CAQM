@@ -17,4 +17,7 @@ urlpatterns = [
     # Availability management
     path('availability/', views.AvailabilityManagementView.as_view(), name='availability_management'),
     path('availability/delete/<int:availability_id>/', views.DeleteAvailabilityView.as_view(), name='delete_availability'),
+    
+    # Queue Routing
+    path('queue-redirect/', views.DoctorQueueRedirectView.as_view(), name='queue_redirect'),
 ]

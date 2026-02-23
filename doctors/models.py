@@ -23,6 +23,7 @@ class Doctor(models.Model):
     license_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
     bio = models.TextField(blank=True)
     consultation_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    profile_photo = models.ImageField(upload_to='doctor_photos/', blank=True, null=True, help_text="Doctor's profile picture")
     
     class Meta:
         db_table = 'doctors'
@@ -59,11 +60,11 @@ class Doctor(models.Model):
             slots.append(current_time.time())
             current_time += slot_duration
         
-        # Get already booked appointments
+        # Get already booked appointments (excluding CANCELLED)
         booked_appointments = Appointment.objects.filter(
             doctor=self,
             appointment_date=date,
-            status__in=['SCHEDULED', 'CHECKED_IN']
+            status__in=['SCHEDULED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED', 'NO_SHOW']
         ).values_list('start_time', flat=True)
         
         # Filter out booked slots
@@ -73,11 +74,18 @@ class Doctor(models.Model):
         appointments_count = Appointment.objects.filter(
             doctor=self,
             appointment_date=date,
-            status__in=['SCHEDULED', 'CHECKED_IN']
+            status__in=['SCHEDULED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED', 'NO_SHOW']
         ).count()
         
         if appointments_count >= 15:
             return []
+            
+        # Filter out slots in the past if booking for today
+        from django.utils import timezone
+        today = timezone.localtime().date()
+        if date == today:
+            now_time = timezone.localtime().time()
+            available_slots = [slot for slot in available_slots if slot > now_time]
         
         return available_slots[:15 - appointments_count]
         

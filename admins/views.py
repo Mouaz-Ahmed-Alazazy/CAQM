@@ -9,6 +9,7 @@ from accounts.models import User
 from doctors.models import Doctor
 from patients.models import Patient
 from nurses.models import Nurse
+from queues.models import Queue
 from datetime import datetime, timedelta
 
 
@@ -87,6 +88,8 @@ class AdminUserRegistrationView(LoginRequiredMixin, AdminRequiredMixin, View):
                 kwargs['specialization'] = specialization
                 kwargs['license_number'] = request.POST.get(
                     'license_number', '')
+                if 'profile_photo' in request.FILES:
+                    kwargs['profile_photo'] = request.FILES['profile_photo']
             elif role == 'NURSE':
                 assigned_doctor_id = request.POST.get('assigned_doctor')
                 if assigned_doctor_id:
@@ -217,6 +220,13 @@ class AdminEditUserView(LoginRequiredMixin, AdminRequiredMixin, View):
             extra_kwargs['specialization'] = specialization
             extra_kwargs['license_number'] = request.POST.get(
                 'license_number', '')
+                
+            # Process profile photo if provided
+            if 'profile_photo' in request.FILES:
+                extra_kwargs['profile_photo'] = request.FILES['profile_photo']
+            # Also handle photo removal if clicked
+            if request.POST.get('remove_photo') == 'true':
+                extra_kwargs['profile_photo'] = None
         elif user.role == 'NURSE':
             assigned_doctor_id = request.POST.get('assigned_doctor')
             if assigned_doctor_id:
@@ -259,6 +269,26 @@ class AdminDashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
         context['overview'] = AdminDashboardService.get_overview_stats()
         context['today_summary'] = AdminDashboardService.get_today_summary()
         context['today'] = today
+        return context
+
+
+class AdminQRListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
+    """View active QR codes for today's queues"""
+    model = Queue
+    template_name = 'admins/admin_qr_list.html'
+    context_object_name = 'queues'
+
+    def get_queryset(self):
+        """Get queues explicitly for today with related doctor info"""
+        today = timezone.now().date()
+        return Queue.objects.filter(
+            date=today,
+            qrcode__isnull=False
+        ).select_related('doctor__user').order_by('doctor__user__first_name')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['today'] = timezone.now().date()
         return context
 
 
