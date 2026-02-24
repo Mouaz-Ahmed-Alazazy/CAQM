@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: caqm
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn caqm_project.wsgi
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13
+      - key: DEBUG
+        value: false
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: caqm-db
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        value: "*.onrender.com"
+
+databases:
+  - name: caqm-db
+    plan: free
+    databaseName: caqm
+    user: caqm_user

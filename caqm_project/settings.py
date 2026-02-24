@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,6 +23,9 @@ try:
     load_dotenv(BASE_DIR / '.env')
 except ImportError:
     pass  # python-dotenv not installed, use system env vars
+
+# Determine if running on Render
+IS_RENDER = os.environ.get('RENDER') == 'true'
 
 
 # Quick-start development settings - unsuitable for production
@@ -43,7 +47,10 @@ DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 # SECURITY: Properly configure allowed hosts
 # Default allows Replit domains for development
-_default_hosts = 'localhost,127.0.0.1,.replit.dev,.replit.app,.repl.co'
+if IS_RENDER:
+    _default_hosts = 'localhost,127.0.0.1,*.onrender.com'
+else:
+    _default_hosts = 'localhost,127.0.0.1,.replit.dev,.replit.app,.repl.co'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', _default_hosts).split(',')
 
 # Production security settings
@@ -76,6 +83,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.replit.dev",
     "https://*.replit.app",
     "https://*.repl.co",
+    "https://*.onrender.com",
     "http://127.0.0.1",
     "http://localhost",
     "http://127.0.0.1:8000",
@@ -112,6 +120,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -145,12 +154,22 @@ WSGI_APPLICATION = "caqm_project.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# Use DATABASE_URL if provided (for Render deployment)
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -190,6 +209,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files (User uploaded files)
 MEDIA_URL = '/media/'
@@ -249,4 +269,3 @@ SOCIALACCOUNT_PROVIDERS = {
 
 ACCOUNT_ADAPTER = 'accounts.adapters.CustomAccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'accounts.adapters.CustomSocialAccountAdapter'
-
