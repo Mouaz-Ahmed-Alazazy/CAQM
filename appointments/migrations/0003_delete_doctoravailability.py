@@ -2,6 +2,17 @@
 
 from django.db import migrations
 
+def fix_database_state(apps, schema_editor):
+    with schema_editor.connection.cursor() as cursor:
+        tables = schema_editor.connection.introspection.table_names(cursor)
+        
+        if 'doctor_availability' in tables:
+            DoctorAvailability = apps.get_model('appointments', 'DoctorAvailability')
+            schema_editor.delete_model(DoctorAvailability)
+            
+        if 'appointments' not in tables:
+            Appointment = apps.get_model('appointments', 'Appointment')
+            schema_editor.create_model(Appointment)
 
 class Migration(migrations.Migration):
 
@@ -10,7 +21,13 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.DeleteModel(
-            name="DoctorAvailability",
-        ),
+        migrations.RunPython(fix_database_state, reverse_code=migrations.RunPython.noop),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.DeleteModel(
+                    name="DoctorAvailability",
+                ),
+            ],
+            database_operations=[]
+        )
     ]
