@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("patients", "0001_initial"),
-        ("appointments", "0002_delete_patientform"),
+        # ("appointments", "0002_delete_patientform"),
     ]
 
     operations = [
