@@ -30,7 +30,8 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "medical_history",
-                    models.TextField(blank=True, help_text="Past medical conditions"),
+                    models.TextField(
+                        blank=True, help_text="Past medical conditions"),
                 ),
                 (
                     "current_medications",
