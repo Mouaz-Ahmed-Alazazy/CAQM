@@ -3,8 +3,13 @@ services:
     name: caqm
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --fake-initial
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
     startCommand: gunicorn caqm_project.wsgi
+    healthCheckPath: /health/
+    disk:
+      name: media-disk
+      mountPath: /var/data/media
+      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.4
@@ -17,7 +22,23 @@ services:
           name: caqm-db
           property: connectionString
       - key: ALLOWED_HOSTS
-        value: "*.onrender.com"
+        value: ".onrender.com"
+      - key: MEDIA_ROOT
+        value: /var/data/media
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
 
 databases:
   - name: caqm-db

@@ -1,6 +1,12 @@
 """Custom error handlers for the CAQM project."""
 
 from django.shortcuts import render
+from django.http import JsonResponse
+
+
+def health_check(request):
+    """Health check endpoint for Render."""
+    return JsonResponse({"status": "ok"})
 
 
 def custom_404(request, exception):
