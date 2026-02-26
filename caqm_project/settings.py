@@ -120,6 +120,8 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
+    "cloudinary_storage",
+    "cloudinary", 
     # Local
     "accounts",
     "admins",
@@ -225,7 +227,20 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files (User uploaded files)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+if "Render" in os.environ:
+    MEDIA_ROOT = os.environ.get("RENDER_MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))
+else:
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Update the STORGES dictioonary to use Cloudinary for media storage
+STORAGES = {
+    'default': {
+        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
