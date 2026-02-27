@@ -46,7 +46,9 @@ class NurseService:
         if not queue:
             return PatientQueue.objects.none()
 
-        return queue.patient_queues.filter(status='WAITING').order_by('position')
+        return queue.patient_queues.filter(
+            status__in=['WAITING', 'EMERGENCY']
+        ).order_by('position')
 
     @staticmethod
     def get_current_patient(queue):
@@ -78,10 +80,10 @@ class NurseService:
         if current:
             return False, f"Please complete consultation with {current.patient} first"
 
-        # Get next waiting patient
+        # Get next waiting patient, prioritizing emergency patients first
         next_patient = queue.patient_queues.filter(
-            status='WAITING'
-        ).order_by('position').first()
+            status__in=['EMERGENCY', 'WAITING']
+        ).order_by('-is_emergency', 'position').first()
 
         if not next_patient:
             return False, "No patients waiting in queue"

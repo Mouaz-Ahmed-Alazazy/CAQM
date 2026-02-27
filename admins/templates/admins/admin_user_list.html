@@ -82,6 +82,7 @@
                                         data-user-name="{{ user.get_full_name }}"
                                         data-user-email="{{ user.email }}"
                                         data-user-role="{{ user.get_role_display }}"
+                                        data-delete-url="{% url 'admins:admin_delete_user' user.id %}"
                                         aria-label="Delete user {{ user.get_full_name }}">
                                     <i class="bi bi-trash"></i> Delete
                                 </button>
@@ -171,11 +172,12 @@
             var userName = this.getAttribute('data-user-name');
             var userEmail = this.getAttribute('data-user-email');
             var userRole = this.getAttribute('data-user-role');
+            var deleteUrl = this.getAttribute('data-delete-url');
 
             document.getElementById('deleteUserName').textContent = userName;
             document.getElementById('deleteUserEmail').textContent = userEmail;
             document.getElementById('deleteUserRole').textContent = userRole;
-            document.getElementById('deleteUserForm').action = '/admins/users/' + userId + '/delete/';
+            document.getElementById('deleteUserForm').action = deleteUrl;
         });
     });
 </script>

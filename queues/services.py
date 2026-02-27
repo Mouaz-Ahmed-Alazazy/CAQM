@@ -154,23 +154,13 @@ class CheckInService:
             if appointments_count == 0:
                 return False, "No scheduled consultations found for today.", 0
 
-            # Validate time: Reject if now is 30+ mins past the earliest appointment start time
-            from datetime import timedelta
-            earliest_appointment = appointments.first()
-            if earliest_appointment and earliest_appointment.start_time:
-                # convert start_time to datetime today to add timedelta safely
-                today_start = timezone.make_aware(datetime.combine(date, earliest_appointment.start_time))
-                today_now = timezone.localtime()
-                if today_now > today_start + timedelta(minutes=30):
-                    return False, f"Check-in rejected: It is more than 30 minutes past your first appointment at {earliest_appointment.start_time.strftime('%H:%M')}.", 0
-
             # Check if doctor has already checked in to the queue
             if queue.doctor_check_in_time:
                 return False, "You have already checked in for today.", appointments_count
 
             # Update all appointments to CHECKED_IN status
             appointments.update(status='CHECKED_IN')
-            
+
             # Record the doctor's check in time in the queue
             queue.doctor_check_in_time = timezone.now()
             queue.save()
