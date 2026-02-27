@@ -35,7 +35,12 @@
                             <tr>
                                 <td>{{ appointment.appointment_date|date:"M d, Y" }}</td>
                                 <td>{{ appointment.start_time|time:"h:i A" }}</td>
-                                <td>{{ appointment.patient.user.get_full_name }}</td>
+                                <td>
+                                    {{ appointment.patient.user.get_full_name }}
+                                    <a href="{% url 'doctors:patient_medical_form' appointment.patient.user.id %}" class="btn btn-sm btn-outline-info ms-2" title="View Medical Form">
+                                        <i class="fas fa-file-medical"></i>
+                                    </a>
+                                </td>
                                 <td>{{ appointment.patient.user.phone }}</td>
                                 <td>
                                     <span class="badge bg-primary">{{ appointment.get_status_display }}</span>

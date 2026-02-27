@@ -14,14 +14,15 @@ from .models import Doctor, DoctorAvailability
 from appointments.models import Appointment
 from doctors.services import ScheduleService
 from queues.models import Queue
+from patients.models import Patient, PatientForm
 
 
 class DoctorRequiredMixin(UserPassesTestMixin):
     """Mixin to ensure only doctors can access the view"""
-    
+
     def test_func(self):
         return self.request.user.is_authenticated and self.request.user.is_doctor()
-    
+
     def handle_no_permission(self):
         messages.error(self.request, 'Only doctors can access this page')
         return redirect('accounts:login')
@@ -30,33 +31,34 @@ class DoctorRequiredMixin(UserPassesTestMixin):
 class DoctorDashboardView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView):
     """Doctor dashboard - view appointments and manage availability"""
     template_name = 'doctors/doctor_dashboard.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         doctor = self.request.user.doctor_profile
-        
+
         context['availabilities'] = ScheduleService.get_doctor_schedule(doctor)
-        
+
         upcoming = Appointment.objects.filter(
             doctor=doctor,
             status__in=['SCHEDULED', 'CHECKED_IN'],
             appointment_date__gte=timezone.now().date()
         ).order_by('appointment_date', 'start_time')
-        
+
         context['upcoming_appointments'] = upcoming
         context['today_appointments'] = upcoming.filter(
             appointment_date=timezone.now().date()
         )
         context['doctor'] = doctor
         context['form'] = self.get_availability_form()
-        
+
         return context
-    
+
     def get_availability_form(self):
         """Create inline form for doctor availability"""
         AvailabilityForm = modelform_factory(
             DoctorAvailability,
-            fields=['day_of_week', 'start_time', 'end_time', 'slot_duration', 'is_active'],
+            fields=['day_of_week', 'start_time',
+                    'end_time', 'slot_duration', 'is_active'],
             widgets={
                 'day_of_week': forms.Select(attrs={'class': 'form-control'}),
                 'start_time': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
@@ -72,16 +74,17 @@ class DoctorDashboardView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView)
             }
         )
         return AvailabilityForm()
-    
+
     def post(self, request, *args, **kwargs):
         """Handle availability form submission"""
         if 'availability_form' in request.POST:
             AvailabilityForm = modelform_factory(
                 DoctorAvailability,
-                fields=['day_of_week', 'start_time', 'end_time', 'slot_duration', 'is_active']
+                fields=['day_of_week', 'start_time',
+                        'end_time', 'slot_duration', 'is_active']
             )
             form = AvailabilityForm(request.POST)
-            
+
             if form.is_valid():
                 schedule_data = [{
                     'day_of_week': form.cleaned_data['day_of_week'],
@@ -90,88 +93,90 @@ class DoctorDashboardView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView)
                     'slot_duration': form.cleaned_data['slot_duration'],
                     'is_active': form.cleaned_data['is_active']
                 }]
-                
+
                 success, message = ScheduleService.update_schedule(
                     request.user.doctor_profile,
                     schedule_data
                 )
-                
+
                 if success:
                     messages.success(request, message)
                 else:
                     messages.error(request, message)
             else:
-                messages.error(request, 'Please correct the errors in the form')
-        
+                messages.error(
+                    request, 'Please correct the errors in the form')
+
         return redirect('doctors:doctor_dashboard')
 
 
 class TodayAppointmentsView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView):
     """View today's appointments for the doctor"""
     template_name = 'doctors/today_appointments.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         doctor = self.request.user.doctor_profile
         today = timezone.now().date()
-        
+
         # Get or create Queue for today
         queue, created = Queue.objects.get_or_create(
             doctor=doctor,
             date=today
         )
-        
+
         context['today_appointments'] = Appointment.objects.filter(
             doctor=doctor,
             status__in=['SCHEDULED', 'CHECKED_IN'],
             appointment_date=today
         ).order_by('start_time')
-        
+
         context['doctor'] = doctor
         context['today_date'] = today
         context['queue'] = queue
-        
+
         return context
 
 
 class UpcomingAppointmentsView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView):
     """View upcoming appointments for the doctor"""
     template_name = 'doctors/upcoming_appointments.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         doctor = self.request.user.doctor_profile
-        
+
         context['upcoming_appointments'] = Appointment.objects.filter(
             doctor=doctor,
             status__in=['SCHEDULED', 'CHECKED_IN'],
             appointment_date__gt=timezone.now().date()
         ).order_by('appointment_date', 'start_time')
-        
+
         context['doctor'] = doctor
-        
+
         return context
 
 
 class AvailabilityManagementView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView):
     """Manage doctor availability schedule"""
     template_name = 'doctors/availability_management.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         doctor = self.request.user.doctor_profile
-        
+
         context['availabilities'] = ScheduleService.get_doctor_schedule(doctor)
         context['doctor'] = doctor
         context['form'] = self.get_availability_form()
-        
+
         return context
-    
+
     def get_availability_form(self):
         """Create inline form for doctor availability"""
         AvailabilityForm = modelform_factory(
             DoctorAvailability,
-            fields=['day_of_week', 'start_time', 'end_time', 'slot_duration', 'is_active'],
+            fields=['day_of_week', 'start_time',
+                    'end_time', 'slot_duration', 'is_active'],
             widgets={
                 'day_of_week': forms.Select(attrs={'class': 'form-control'}),
                 'start_time': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
@@ -187,16 +192,17 @@ class AvailabilityManagementView(LoginRequiredMixin, DoctorRequiredMixin, Templa
             }
         )
         return AvailabilityForm()
-    
+
     def post(self, request, *args, **kwargs):
         """Handle availability form submission"""
         if 'availability_form' in request.POST:
             AvailabilityForm = modelform_factory(
                 DoctorAvailability,
-                fields=['day_of_week', 'start_time', 'end_time', 'slot_duration', 'is_active']
+                fields=['day_of_week', 'start_time',
+                        'end_time', 'slot_duration', 'is_active']
             )
             form = AvailabilityForm(request.POST)
-            
+
             if form.is_valid():
                 schedule_data = [{
                     'day_of_week': form.cleaned_data['day_of_week'],
@@ -205,25 +211,26 @@ class AvailabilityManagementView(LoginRequiredMixin, DoctorRequiredMixin, Templa
                     'slot_duration': form.cleaned_data['slot_duration'],
                     'is_active': form.cleaned_data['is_active']
                 }]
-                
+
                 success, message = ScheduleService.update_schedule(
                     request.user.doctor_profile,
                     schedule_data
                 )
-                
+
                 if success:
                     messages.success(request, message)
                 else:
                     messages.error(request, message)
             else:
-                messages.error(request, 'Please correct the errors in the form')
-        
+                messages.error(
+                    request, 'Please correct the errors in the form')
+
         return redirect('doctors:availability_management')
 
 
 class DeleteAvailabilityView(LoginRequiredMixin, DoctorRequiredMixin, View):
     """Delete doctor availability"""
-    
+
     def get(self, request, availability_id):
         availability = get_object_or_404(
             DoctorAvailability,
@@ -240,16 +247,34 @@ class DoctorQueueRedirectView(LoginRequiredMixin, DoctorRequiredMixin, View):
     Smart redirect that sends the doctor to Today's Appointments if they are checked in,
     otherwise redirects them to the QR Scanner page.
     """
+
     def get(self, request, *args, **kwargs):
         doctor = request.user.doctor_profile
         today = timezone.now().date()
-        
+
         queue = Queue.objects.filter(
-            doctor=doctor, 
+            doctor=doctor,
             date=today,
             doctor_check_in_time__isnull=False
         ).first()
-        
+
         if queue:
             return redirect('doctors:today_appointments')
         return redirect('queues:qr_scanner')
+
+
+class PatientMedicalFormView(LoginRequiredMixin, DoctorRequiredMixin, TemplateView):
+    """View a patient's medical form"""
+    template_name = 'doctors/patient_medical_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        patient_id = self.kwargs.get('patient_id')
+        patient = get_object_or_404(Patient, user__id=patient_id)
+
+        # Get the most recent form for this patient
+        patient_form = PatientForm.objects.filter(patient=patient).first()
+
+        context['patient'] = patient
+        context['patient_form'] = patient_form
+        return context

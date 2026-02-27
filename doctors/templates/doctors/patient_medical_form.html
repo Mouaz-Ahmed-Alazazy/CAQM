@@ -1,0 +1,120 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Patient Medical Form - CAQM{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-file-medical"></i> Medical Form</h2>
+                <p class="text-muted">Patient: {{ patient.user.get_full_name }}</p>
+            </div>
+            <a href="javascript:history.back()" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-user"></i> Patient Details</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <strong>Name:</strong> {{ patient.user.get_full_name }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Age:</strong> 
+                        {% if patient.user.date_of_birth %}
+                            {{ patient.user.date_of_birth|timesince }}
+                        {% else %}
+                            Not provided
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Gender:</strong> {{ patient.user.get_gender_display }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Phone:</strong> {{ patient.user.phone|default:"Not provided" }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Emergency Contact:</strong> {{ patient.emergency_contact|default:"Not provided" }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        {% if patient_form %}
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-notes-medical"></i> Medical History</h5>
+                <small>Last updated: {{ patient_form.updated_at|date:"M d, Y" }}</small>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="text-primary border-bottom pb-2">Chief Complaint</h6>
+                    <p>{{ patient_form.chief_complaint|default:"None reported" }}</p>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-primary border-bottom pb-2">Symptoms</h6>
+                    {% if patient_form.symptoms %}
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for symptom in patient_form.symptoms.split|join:""|slice:":" %}
+                                <!-- We need to split by comma, but Django template doesn't have a split filter by default -->
+                                <!-- We'll just display the raw text for now -->
+                            {% endfor %}
+                            <p>{{ patient_form.symptoms }}</p>
+                        </div>
+                    {% else %}
+                        <p>None reported</p>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-primary border-bottom pb-2">Medical History</h6>
+                    {% if patient_form.medical_history_options %}
+                        <p><strong>Conditions:</strong> {{ patient_form.medical_history_options }}</p>
+                    {% endif %}
+                    {% if patient_form.medical_history %}
+                        <p><strong>Details:</strong> {{ patient_form.medical_history }}</p>
+                    {% endif %}
+                    {% if not patient_form.medical_history_options and not patient_form.medical_history %}
+                        <p>None reported</p>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-primary border-bottom pb-2">Current Medications</h6>
+                    <p>{{ patient_form.current_medications|default:"None reported" }}</p>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-primary border-bottom pb-2">Allergies</h6>
+                    {% if patient_form.allergy_options %}
+                        <p><strong>Common Allergies:</strong> {{ patient_form.allergy_options }}</p>
+                    {% endif %}
+                    {% if patient_form.allergies %}
+                        <p><strong>Details:</strong> {{ patient_form.allergies }}</p>
+                    {% endif %}
+                    {% if not patient_form.allergy_options and not patient_form.allergies %}
+                        <p>None reported</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> This patient has not submitted a medical form yet.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
