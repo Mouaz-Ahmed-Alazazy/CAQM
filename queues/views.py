@@ -4,6 +4,7 @@ Views for Queue Check-in functionality.
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 from django.http import JsonResponse
+from django.shortcuts import redirect
 from django.views import View
 from django.utils import timezone
 from django.utils.decorators import method_decorator

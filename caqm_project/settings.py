@@ -233,6 +233,7 @@ else:
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Update the STORGES dictioonary to use Cloudinary for media storage
+CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL')
 STORAGES = {
     'default': {
         'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
