@@ -26,3 +26,6 @@ docs/
 
 # Logs directory
 logs/
+
+# vscode dir
+.vscode/
