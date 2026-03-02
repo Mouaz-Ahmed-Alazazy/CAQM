@@ -21,8 +21,8 @@ class Queue(models.Model):
     qrcode_image = models.ImageField(
         upload_to='qr_codes/', blank=True, null=True)
     qrcode_generated_at = models.DateTimeField(blank=True, null=True)
-    doctor_check_in_time = models.DateTimeField(blank=True, null=True, 
-        help_text="Time when the doctor checked in for this queue")
+    doctor_check_in_time = models.DateTimeField(blank=True, null=True,
+                                                help_text="Time when the doctor checked in for this queue")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -63,14 +63,17 @@ class Queue(models.Model):
         # Save image to BytesIO buffer
         buffer = BytesIO()
         img.save(buffer, format="PNG")
+        # Reset buffer cursor to start of file to avoid 'Empty file' error on upload
+        buffer.seek(0)
         file_name = f"qr_queue_{self.doctor.pk}_{self.date.strftime('%Y%m%d')}.png"
 
         # Save image file to the model field
         self.qrcode_image.save(file_name, File(buffer), save=False)
-        
+
         # Append to codes.json in media/qr_codes directory
         try:
-            codes_file = os.path.join(settings.MEDIA_ROOT, 'qr_codes', 'codes.json')
+            codes_file = os.path.join(
+                settings.MEDIA_ROOT, 'qr_codes', 'codes.json')
             os.makedirs(os.path.dirname(codes_file), exist_ok=True)
             codes = []
             if os.path.exists(codes_file):
@@ -79,7 +82,7 @@ class Queue(models.Model):
                         codes = json.load(f)
                     except json.JSONDecodeError:
                         pass
-            
+
             codes.append({
                 'doctor_id': self.doctor.pk,
                 'doctor_name': str(self.doctor.user.get_full_name()),
@@ -88,7 +91,7 @@ class Queue(models.Model):
                 'qr_data': qr_data,
                 'generated_at': self.qrcode_generated_at.isoformat()
             })
-            
+
             with open(codes_file, 'w') as f:
                 json.dump(codes, f, indent=4)
         except Exception as e:
@@ -114,7 +117,7 @@ class Queue(models.Model):
         and the remaining time of the currently progressing consultation.
         """
         people_ahead = max(0, position - 1)
-        
+
         # Get doctor's official slot duration for this day
         from doctors.models import DoctorAvailability
         day_of_week = self.date.strftime('%A').upper()
@@ -123,22 +126,23 @@ class Queue(models.Model):
             day_of_week=day_of_week,
             is_active=True
         ).first()
-        
-        slot_duration = availability.slot_duration if availability else getattr(settings, 'DEFAULT_CONSULTATION_DURATION', 20)
-        
+
+        slot_duration = availability.slot_duration if availability else getattr(
+            settings, 'DEFAULT_CONSULTATION_DURATION', 20)
+
         # Check active consultation remaining time
         active_consultation = PatientQueue.objects.filter(
             queue=self,
             status='IN_PROGRESS',
             consultation_start_time__isnull=False
         ).first()
-        
+
         remaining_time = 0
         if active_consultation:
             elapsed_time = timezone.now() - active_consultation.consultation_start_time
             elapsed_minutes = elapsed_time.total_seconds() / 60.0
             remaining_time = max(0, slot_duration - elapsed_minutes)
-            
+
         return int((people_ahead * slot_duration) + remaining_time)
 
     def enqueue(self, patient_id):

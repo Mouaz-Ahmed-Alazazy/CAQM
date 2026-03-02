@@ -167,13 +167,13 @@ class AvailabilityManagementView(LoginRequiredMixin, DoctorRequiredMixin, Templa
 
         context['availabilities'] = ScheduleService.get_doctor_schedule(doctor)
         context['doctor'] = doctor
-        context['form'] = self.get_availability_form()
+        if 'form' not in context:
+            context['form'] = self.get_availability_form()
 
         return context
 
-    def get_availability_form(self):
-        """Create inline form for doctor availability"""
-        AvailabilityForm = modelform_factory(
+    def get_form_class(self):
+        return modelform_factory(
             DoctorAvailability,
             fields=['day_of_week', 'start_time',
                     'end_time', 'slot_duration', 'is_active'],
@@ -191,16 +191,16 @@ class AvailabilityManagementView(LoginRequiredMixin, DoctorRequiredMixin, Templa
                 'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input', 'checked': True}),
             }
         )
+
+    def get_availability_form(self):
+        """Create inline form for doctor availability"""
+        AvailabilityForm = self.get_form_class()
         return AvailabilityForm()
 
     def post(self, request, *args, **kwargs):
         """Handle availability form submission"""
         if 'availability_form' in request.POST:
-            AvailabilityForm = modelform_factory(
-                DoctorAvailability,
-                fields=['day_of_week', 'start_time',
-                        'end_time', 'slot_duration', 'is_active']
-            )
+            AvailabilityForm = self.get_form_class()
             form = AvailabilityForm(request.POST)
 
             if form.is_valid():
@@ -219,11 +219,15 @@ class AvailabilityManagementView(LoginRequiredMixin, DoctorRequiredMixin, Templa
 
                 if success:
                     messages.success(request, message)
+                    return redirect('doctors:availability_management')
                 else:
                     messages.error(request, message)
             else:
                 messages.error(
                     request, 'Please correct the errors in the form')
+
+            # If validation failed or update failed, re-render context with bound form
+            return self.render_to_response(self.get_context_data(form=form))
 
         return redirect('doctors:availability_management')
 
