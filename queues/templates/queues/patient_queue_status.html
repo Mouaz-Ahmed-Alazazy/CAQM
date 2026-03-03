@@ -160,7 +160,7 @@
 
                         {% if doctor_checked_in %}
                         <span class="doctor-status status-online">
-                            <i class="fas fa-check-circle me-1"></i> 
+                            <i class="fas fa-check-circle me-1"></i> Checked In
                         </span>
                         {% else %}
                         <span class="doctor-status status-offline">
@@ -231,6 +231,19 @@
                     if (infoValues[peopleAheadIndex]) {
                         infoValues[peopleAheadIndex].textContent = `${data.people_ahead} patients`;
                     }
+
+                    // Update doctor status
+                    const statusSpan = document.querySelector('.doctor-status');
+                    if (statusSpan) {
+                        if (data.doctor_checked_in) {
+                            statusSpan.className = 'doctor-status status-online';
+                            statusSpan.innerHTML = '<i class="fas fa-check-circle me-1"></i> Checked In';
+                        } else {
+                            statusSpan.className = 'doctor-status status-offline';
+                            statusSpan.innerHTML = '<i class="fas fa-clock me-1"></i> Not Checked In';
+                        }
+                    }
+
                     document.getElementById('last-updated').textContent = data.last_updated;
 
                     if (data.status === 'IN_PROGRESS') {

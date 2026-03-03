@@ -153,6 +153,10 @@ class QueueStatusAPIView(LoginRequiredMixin, View):
         estimated_time = queue_entry.queue.get_estimated_wait_time(
             people_ahead)
 
+        # Check if doctor is checked in
+        doctor_checked_in = CheckInService.is_doctor_checked_in(
+            queue_entry.queue.doctor, today)
+
         return JsonResponse({
             'has_active_queue': True,
             'position': queue_entry.position,
@@ -161,6 +165,7 @@ class QueueStatusAPIView(LoginRequiredMixin, View):
             'people_ahead': people_ahead,
             'status': queue_entry.status,
             'doctor_name': str(queue_entry.queue.doctor),
+            'doctor_checked_in': doctor_checked_in,
             'last_updated': timezone.now().strftime("%H:%M")
         })
 
@@ -184,7 +189,7 @@ class PatientQueueStatusView(LoginRequiredMixin, TemplateView):
 
         if not queue_entry:
             return redirect('queues:qr_scanner')
-            
+
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -205,12 +210,9 @@ class PatientQueueStatusView(LoginRequiredMixin, TemplateView):
         context['queue'] = queue_entry.queue
         context['doctor'] = queue_entry.queue.doctor
 
-        # Check if doctor has checked in (has any appointments checked in today)
-        doctor_checked_in = Appointment.objects.filter(
-            doctor=queue_entry.queue.doctor,
-            appointment_date=today,
-            status__in=['CHECKED_IN', 'IN_PROGRESS', 'COMPLETED']
-        ).exists()
+        # Check if doctor has checked in
+        doctor_checked_in = CheckInService.is_doctor_checked_in(
+            queue_entry.queue.doctor, today)
 
         context['doctor_checked_in'] = doctor_checked_in
 
