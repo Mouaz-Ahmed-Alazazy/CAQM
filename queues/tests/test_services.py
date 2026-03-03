@@ -127,8 +127,8 @@ class TestCheckInService:
         success, msg, count = CheckInService.check_in_doctor(
             setup_data["doctor"], setup_data["queue"], setup_data["today"]
         )
-        assert not success
-        assert "No scheduled consultations" in msg
+        assert success
+        assert "no scheduled consultations" in msg.lower()
 
     def test_check_in_doctor_already_checked_in(self, setup_data):
         setup_data["queue"].doctor_check_in_time = timezone.now()
@@ -183,7 +183,7 @@ class TestCheckInService:
         qr = f"QUEUE-TOKEN-{setup_data['doctor'].pk}-{setup_data['today'].strftime('%Y%m%d')}"
         res = CheckInService.process_check_in(setup_data["patient_user"], qr)
         assert not res["success"]
-        assert "No scheduled appointment found" in res["message"]
+        assert "no valid appointment found" in res["message"].lower()
 
     def test_process_check_in_patient_success(self, setup_data):
         qr = f"QUEUE-TOKEN-{setup_data['doctor'].pk}-{setup_data['today'].strftime('%Y%m%d')}"
@@ -206,8 +206,8 @@ class TestCheckInService:
         setup_data["appointment"].delete()
         qr = f"QUEUE-TOKEN-{setup_data['doctor'].pk}-{setup_data['today'].strftime('%Y%m%d')}"
         res = CheckInService.process_check_in(setup_data["doctor_user"], qr)
-        assert not res["success"]
-        assert "No consultations scheduled" in res["message"]
+        assert res["success"]
+        assert "no scheduled consultations" in res["message"].lower()
 
     def test_process_check_in_invalid_role(self, setup_data):
         admin_user = User.objects.create_superuser(

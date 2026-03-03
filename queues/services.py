@@ -2,6 +2,7 @@
 Service layer for Queue Check-in business logic.
 Handles QR code parsing, appointment verification, and check-in processing.
 """
+
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db.models import Case, IntegerField, Value, When
@@ -24,9 +25,9 @@ class CheckInService:
         Parse QR code data to extract doctor_id and date.
         """
         try:
-            parts = qr_data.strip().split('-')
+            parts = qr_data.strip().split("-")
 
-            if len(parts) != 4 or parts[0] != 'QUEUE':
+            if len(parts) != 4 or parts[0] != "QUEUE":
                 logger.error(f"Invalid QR code format: {qr_data}")
                 return None, None
 
@@ -35,7 +36,7 @@ class CheckInService:
             date_str = parts[3]
 
             # Parse date from YYYYMMDD format
-            date = datetime.strptime(date_str, '%Y%m%d').date()
+            date = datetime.strptime(date_str, "%Y%m%d").date()
 
             return doctor_id, date
 
@@ -53,21 +54,23 @@ class CheckInService:
                 patient=patient,
                 doctor=doctor,
                 appointment_date=date,
-                status='SCHEDULED'
+                status__in=["SCHEDULED", "CHECKED_IN"],
             )
             return appointment
         except Appointment.DoesNotExist:
             logger.warning(
-                f"No scheduled appointment found for patient {patient.pk} with doctor {doctor.pk} on {date}")
+                f"No valid appointment found for patient {patient.pk} with doctor {doctor.pk} on {date}"
+            )
             return None
         except Appointment.MultipleObjectsReturned:
             logger.error(
-                f"Multiple appointments found for patient {patient.pk} with doctor {doctor.pk} on {date}")
+                f"Multiple appointments found for patient {patient.pk} with doctor {doctor.pk} on {date}"
+            )
             return Appointment.objects.filter(
                 patient=patient,
                 doctor=doctor,
                 appointment_date=date,
-                status='SCHEDULED'
+                status__in=["SCHEDULED", "CHECKED_IN"],
             ).first()
 
     @staticmethod
@@ -77,14 +80,13 @@ class CheckInService:
         Returns True if doctor has any scheduled appointments, False otherwise.
         """
         has_consultations = Appointment.objects.filter(
-            doctor=doctor,
-            appointment_date=date,
-            status='SCHEDULED'
+            doctor=doctor, appointment_date=date, status="SCHEDULED"
         ).exists()
 
         if not has_consultations:
             logger.warning(
-                f"Doctor {doctor.pk} has no consultations scheduled for {date}")
+                f"Doctor {doctor.pk} has no consultations scheduled for {date}"
+            )
 
         return has_consultations
 
@@ -94,10 +96,9 @@ class CheckInService:
         Check if doctor has checked in for the given date.
         """
         from .models import Queue
+
         return Queue.objects.filter(
-            doctor=doctor,
-            date=date,
-            doctor_check_in_time__isnull=False
+            doctor=doctor, date=date, doctor_check_in_time__isnull=False
         ).exists()
 
     @staticmethod
@@ -108,8 +109,7 @@ class CheckInService:
         try:
             # Check if patient is already in the queue
             existing_entry = PatientQueue.objects.filter(
-                queue=queue,
-                patient=patient
+                queue=queue, patient=patient
             ).first()
 
             if existing_entry:
@@ -119,22 +119,31 @@ class CheckInService:
             patient_queue = PatientQueue.objects.create(
                 queue=queue,
                 patient=patient,
-                status='WAITING',
-                checkedin_via_qrcode=True
+                status="WAITING",
+                checkedin_via_qrcode=True,
             )
 
             # Update appointment status to CHECKED_IN
-            appointment.status = 'CHECKED_IN'
+            appointment.status = "CHECKED_IN"
             appointment.save()
 
             logger.info(
-                f"Patient {patient.pk} checked in to queue {queue.pk} at position {patient_queue.position}")
+                f"Patient {patient.pk} checked in to queue {queue.pk} at position {patient_queue.position}"
+            )
 
-            return True, f"Successfully checked in! Your position in queue: {patient_queue.position}", patient_queue
+            return (
+                True,
+                f"Successfully checked in! Your position in queue: {patient_queue.position}",
+                patient_queue,
+            )
 
         except Exception as e:
             logger.error(f"Error checking in patient {patient.pk}: {e}")
-            return False, "An error occurred during check-in. Please contact reception.", None
+            return (
+                False,
+                "An error occurred during check-in. Please contact reception.",
+                None,
+            )
 
     @staticmethod
     def check_in_doctor(doctor, queue, date):
@@ -142,53 +151,78 @@ class CheckInService:
         Check in a doctor by updating all their appointments for the day to CHECKED_IN.
         """
         try:
-            # Get all scheduled appointments for the doctor on this date
-            appointments = Appointment.objects.filter(
-                doctor=doctor,
-                appointment_date=date,
-                status='SCHEDULED'
-            ).order_by('start_time')
-
-            appointments_count = appointments.count()
-
-            if appointments_count == 0:
-                return False, "No scheduled consultations found for today.", 0
-
             # Check if doctor has already checked in to the queue
             if queue.doctor_check_in_time:
-                return False, "You have already checked in for today.", appointments_count
+                appointments_count = Appointment.objects.filter(
+                    doctor=doctor, appointment_date=date, status="CHECKED_IN"
+                ).count()
+                return (
+                    False,
+                    "You have already checked in for today.",
+                    appointments_count,
+                )
 
-            # Update all appointments to CHECKED_IN status
-            appointments.update(status='CHECKED_IN')
+            # Get all scheduled appointments for the doctor on this date
+            appointments = Appointment.objects.filter(
+                doctor=doctor, appointment_date=date, status="SCHEDULED"
+            ).order_by("start_time")
+
+            appointments_count = appointments.count()
 
             # Record the doctor's check in time in the queue
             queue.doctor_check_in_time = timezone.now()
             queue.save()
 
-            logger.info(
-                f"Doctor {doctor.pk} checked in for {appointments_count} consultations on {date}")
+            if appointments_count == 0:
+                logger.info(
+                    f"Doctor {doctor.pk} checked in with no scheduled consultations on {date}"
+                )
+                return (
+                    True,
+                    "Successfully checked in! You have no scheduled consultations today.",
+                    0,
+                )
 
-            return True, f"Successfully checked in! You have {appointments_count} consultations today.", appointments_count
+            # Update all appointments to CHECKED_IN status
+            appointments.update(status="CHECKED_IN")
+
+            logger.info(
+                f"Doctor {doctor.pk} checked in for {appointments_count} consultations on {date}"
+            )
+
+            return (
+                True,
+                f"Successfully checked in! You have {appointments_count} consultations today.",
+                appointments_count,
+            )
 
         except Exception as e:
             logger.error(f"Error checking in doctor {doctor.pk}: {e}")
-            return False, "An error occurred during check-in. Please contact reception.", 0
+            return (
+                False,
+                "An error occurred during check-in. Please contact reception.",
+                0,
+            )
 
     @staticmethod
     def get_next_waiting_entry(queue):
         """
         Return the next patient to be called, prioritizing emergency entries.
         """
-        return PatientQueue.objects.filter(
-            queue=queue,
-            status__in=['EMERGENCY', 'WAITING']
-        ).annotate(
-            priority=Case(
-                When(status='EMERGENCY', then=Value(0)),
-                default=Value(1),
-                output_field=IntegerField(),
+        return (
+            PatientQueue.objects.filter(
+                queue=queue, status__in=["EMERGENCY", "WAITING"]
             )
-        ).order_by('priority', 'position').first()
+            .annotate(
+                priority=Case(
+                    When(status="EMERGENCY", then=Value(0)),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by("priority", "position")
+            .first()
+        )
 
     @staticmethod
     def call_next_patient(queue_id):
@@ -203,15 +237,14 @@ class CheckInService:
             queue = Queue.objects.get(pk=queue_id)
 
             # End current consultation if any
-            PatientQueue.objects.filter(queue=queue, status='IN_PROGRESS').update(
-                status='TERMINATED',
-                consultation_end_time=timezone.now()
+            PatientQueue.objects.filter(queue=queue, status="IN_PROGRESS").update(
+                status="TERMINATED", consultation_end_time=timezone.now()
             )
 
             # Start next consultation, prioritizing emergency patients
             next_p = CheckInService.get_next_waiting_entry(queue)
             if next_p:
-                next_p.status = 'IN_PROGRESS'
+                next_p.status = "IN_PROGRESS"
                 next_p.consultation_start_time = timezone.now()
                 next_p.save()
                 return True, f"Called {next_p.patient}", next_p
@@ -231,32 +264,29 @@ class CheckInService:
 
         if not doctor_id or not date:
             return {
-                'success': False,
-                'message': 'Invalid QR code format.',
-                'data': None
+                "success": False,
+                "message": "Invalid QR code format.",
+                "data": None,
             }
 
         # Validate that the QR code date matches today
         today = timezone.localtime().date()
         if date != today:
             return {
-                'success': False,
-                'message': f"Scan rejected: This QR code is for {date.strftime('%b %d, %Y')}, but today is {today.strftime('%b %d, %Y')}. You can only check in on the day of the appointment.",
-                'data': None
+                "success": False,
+                "message": f"Scan rejected: This QR code is for {date.strftime('%b %d, %Y')}, but today is {today.strftime('%b %d, %Y')}. You can only check in on the day of the appointment.",
+                "data": None,
             }
 
         # Get the queue
         try:
             doctor = Doctor.objects.get(pk=doctor_id)
-            queue, created = Queue.objects.get_or_create(
-                doctor=doctor,
-                date=date
-            )
+            queue, created = Queue.objects.get_or_create(doctor=doctor, date=date)
         except Doctor.DoesNotExist:
             return {
-                'success': False,
-                'message': 'Invalid QR code: Doctor not found.',
-                'data': None
+                "success": False,
+                "message": "Invalid QR code: Doctor not found.",
+                "data": None,
             }
 
         # Check user role and process accordingly
@@ -264,27 +294,33 @@ class CheckInService:
             # Patient check-in
             patient = user.patient_profile
             appointment = CheckInService.verify_patient_appointment(
-                patient, doctor, date)
+                patient, doctor, date
+            )
 
             if not appointment:
                 return {
-                    'success': False,
-                    'message': f'No scheduled appointment found with {doctor} on {date.strftime("%B %d, %Y")}.',
-                    'data': None
+                    "success": False,
+                    "message": f"No valid appointment found with {doctor} on {date.strftime('%B %d, %Y')}.",
+                    "data": None,
                 }
 
             success, message, patient_queue = CheckInService.check_in_patient(
-                patient, queue, appointment)
+                patient, queue, appointment
+            )
 
             return {
-                'success': success,
-                'message': message,
-                'data': {
-                    'position': patient_queue.position if patient_queue else None,
-                    'estimated_time': patient_queue.estimated_time if patient_queue else None,
-                    'estimated_time_display': patient_queue.get_estimated_time_display() if patient_queue else None,
-                    'queue_size': queue.get_size()
-                }
+                "success": success,
+                "message": message,
+                "data": {
+                    "position": patient_queue.position if patient_queue else None,
+                    "estimated_time": patient_queue.estimated_time
+                    if patient_queue
+                    else None,
+                    "estimated_time_display": patient_queue.get_estimated_time_display()
+                    if patient_queue
+                    else None,
+                    "queue_size": queue.get_size(),
+                },
             }
 
         elif user.is_doctor():
@@ -294,36 +330,20 @@ class CheckInService:
             # Verify this is the correct doctor for this QR code
             if doctor_profile.pk != doctor_id:
                 return {
-                    'success': False,
-                    'message': 'This QR code is for a different doctor.',
-                    'data': None
-                }
-
-            has_consultations = CheckInService.verify_doctor_consultation(
-                doctor_profile, date)
-
-            if not has_consultations:
-                return {
-                    'success': False,
-                    'message': f'No consultations scheduled for {date.strftime("%B %d, %Y")}.',
-                    'data': None
+                    "success": False,
+                    "message": "This QR code is for a different doctor.",
+                    "data": None,
                 }
 
             success, message, count = CheckInService.check_in_doctor(
-                doctor_profile, queue, date)
+                doctor_profile, queue, date
+            )
 
             return {
-                'success': success,
-                'message': message,
-                'data': {
-                    'consultations_count': count,
-                    'queue_size': queue.get_size()
-                }
+                "success": success,
+                "message": message,
+                "data": {"consultations_count": count, "queue_size": queue.get_size()},
             }
 
         else:
-            return {
-                'success': False,
-                'message': 'Invalid user role.',
-                'data': None
-            }
+            return {"success": False, "message": "Invalid user role.", "data": None}

@@ -267,7 +267,11 @@
                 .then(result => {
                     document.getElementById('loadingSpinner').classList.remove('active');
                     if (result.ok && result.data.success) {
-                        window.location.href = "{% url 'queues:queue_status' %}";
+                        {% if user.is_doctor %}
+                            window.location.href = "{% url 'doctors:doctor_dashboard' %}";
+                        {% else %}
+                            window.location.href = "{% url 'queues:queue_status' %}";
+                        {% endif %}
                     } else {
                         const msg = result.data.message || 'Check-in failed. Please verify the code and try again.';
                         manualError.textContent = msg;
@@ -398,8 +402,12 @@
                 document.getElementById('loadingSpinner').classList.remove('active');
 
                 if (result.ok && result.data.success) {
-                    // Redirect to status page on success
-                    window.location.href = "{% url 'queues:queue_status' %}";
+                    // Redirect to appropriate dashboard/status page on success
+                    {% if user.is_doctor %}
+                        window.location.href = "{% url 'doctors:doctor_dashboard' %}";
+                    {% else %}
+                        window.location.href = "{% url 'queues:queue_status' %}";
+                    {% endif %}
                 } else {
                     const errorMsg = result.data.message || 'Check-in failed. Please try again or ask reception.';
                     showError(errorMsg);
