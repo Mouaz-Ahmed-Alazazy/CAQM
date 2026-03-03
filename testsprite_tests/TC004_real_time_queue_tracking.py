@@ -1,153 +1,184 @@
 import requests
-import uuid
 import time
 
 BASE_URL = "http://localhost:9000"
 TIMEOUT = 30
-HEADERS = {"Content-Type": "application/json"}
 
-def create_doctor():
-    # Create a doctor profile with specialization and availability
-    doctor_data = {
-        "name": f"Dr_{uuid.uuid4().hex[:8]}",
-        "email": f"dr{uuid.uuid4().hex[:8]}@clinic.com",
-        "specialization": "General",
-        "weekly_availability": [
-            {"day": "Monday", "start_time": "09:00", "end_time": "17:00"},
-            {"day": "Tuesday", "start_time": "09:00", "end_time": "17:00"}
-        ]
+def create_doctor(specialization="General"):
+    payload = {
+        "name": "Dr. Test",
+        "specialization": specialization,
+        "weekly_availability": {
+            "Monday": [["09:00", "17:00"]],
+            "Tuesday": [["09:00", "17:00"]],
+            "Wednesday": [["09:00", "17:00"]],
+            "Thursday": [["09:00", "17:00"]],
+            "Friday": [["09:00", "17:00"]],
+        }
     }
-    resp = requests.post(f"{BASE_URL}/api/doctors/", json=doctor_data, headers=HEADERS, timeout=TIMEOUT)
-    resp.raise_for_status()
-    return resp.json()['id']
+    r = requests.post(f"{BASE_URL}/api/doctors/", json=payload, timeout=TIMEOUT)
+    r.raise_for_status()
+    return r.json()
 
 def delete_doctor(doctor_id):
-    requests.delete(f"{BASE_URL}/api/doctors/{doctor_id}/", headers=HEADERS, timeout=TIMEOUT)
+    requests.delete(f"{BASE_URL}/api/doctors/{doctor_id}/", timeout=TIMEOUT)
 
 def create_patient():
-    # Create a patient profile with valid emergency contact
-    patient_data = {
-        "name": f"Patient_{uuid.uuid4().hex[:8]}",
-        "email": f"patient{uuid.uuid4().hex[:8]}@example.com",
-        "emergency_contact": "0911234567"
+    payload = {
+        "name": "Test Patient",
+        "email": f"patient{int(time.time()*1000)}@test.com",
+        "emergency_contact": "09112345678"
     }
-    resp = requests.post(f"{BASE_URL}/api/patients/", json=patient_data, headers=HEADERS, timeout=TIMEOUT)
-    resp.raise_for_status()
-    return resp.json()['id']
+    r = requests.post(f"{BASE_URL}/api/patients/", json=payload, timeout=TIMEOUT)
+    r.raise_for_status()
+    return r.json()
 
 def delete_patient(patient_id):
-    requests.delete(f"{BASE_URL}/api/patients/{patient_id}/", headers=HEADERS, timeout=TIMEOUT)
+    requests.delete(f"{BASE_URL}/api/patients/{patient_id}/", timeout=TIMEOUT)
 
-def book_appointment(patient_id, doctor_id):
-    # Book a scheduled appointment for today in the future, simple valid appointment
-    appointment_data = {
-        "patient_id": patient_id,
+def create_appointment(doctor_id, patient_id, specialization="General", appointment_date=None, start_time="09:00"):
+    if appointment_date is None:
+        appointment_date = time.strftime("%Y-%m-%d", time.localtime(time.time() + 86400))  # tomorrow
+    payload = {
         "doctor_id": doctor_id,
-        "appointment_date": time.strftime("%Y-%m-%d"),
-        "start_time": "15:00",
-        "status": "SCHEDULED"
+        "patient_id": patient_id,
+        "specialization": specialization,
+        "appointment_date": appointment_date,
+        "start_time": start_time,
+        "type": "scheduled"  # scheduled appointment
     }
-    resp = requests.post(f"{BASE_URL}/api/appointments/", json=appointment_data, headers=HEADERS, timeout=TIMEOUT)
-    resp.raise_for_status()
-    return resp.json()['id']
+    r = requests.post(f"{BASE_URL}/api/appointments/", json=payload, timeout=TIMEOUT)
+    r.raise_for_status()
+    return r.json()
 
-def cancel_appointment(appointment_id):
-    requests.delete(f"{BASE_URL}/api/appointments/{appointment_id}/", headers=HEADERS, timeout=TIMEOUT)
-
-def checkin_appointment(appointment_id):
-    # Endpoint to perform digital check-in for walk-in or scheduled appointments
-    resp = requests.post(f"{BASE_URL}/api/appointments/{appointment_id}/checkin/", headers=HEADERS, timeout=TIMEOUT)
-    resp.raise_for_status()
-    return resp.json()
+def delete_appointment(appointment_id):
+    requests.delete(f"{BASE_URL}/api/appointments/{appointment_id}/", timeout=TIMEOUT)
 
 def get_queue_status(doctor_id):
-    # Get real-time queue tracking info for a doctor's patients
-    resp = requests.get(f"{BASE_URL}/api/queues/{doctor_id}/", headers=HEADERS, timeout=TIMEOUT)
-    resp.raise_for_status()
-    return resp.json()
+    r = requests.get(f"{BASE_URL}/api/queues/{doctor_id}/", timeout=TIMEOUT)
+    r.raise_for_status()
+    return r.json()
+
+def update_appointment_status(appointment_id, status):
+    payload = {"status": status}
+    r = requests.put(f"{BASE_URL}/api/appointments/{appointment_id}/status/", json=payload, timeout=TIMEOUT)
+    r.raise_for_status()
+    return r.json()
 
 def test_real_time_queue_tracking():
-    doctor_id = None
-    patient1_id = None
-    patient2_id = None
-    appointment1_id = None
-    appointment2_id = None
+    """
+    Validate the queue tracking API provides real-time updates on patient queue status and position,
+    ensuring FIFO order management and notifications.
+    """
+    # Setup: create doctor and patient, create multiple appointments to simulate queue
+    doctor = create_doctor()
+    patient1 = create_patient()
+    patient2 = create_patient()
+
+    appointment_date = time.strftime("%Y-%m-%d", time.localtime(time.time() + 86400))  # tomorrow
+
+    appointments = []
     try:
-        # Create doctor and patients
-        doctor_id = create_doctor()
-        patient1_id = create_patient()
-        patient2_id = create_patient()
+        appt1 = create_appointment(doctor_id=doctor["id"], patient_id=patient1["id"], appointment_date=appointment_date, start_time="09:00")
+        appt2 = create_appointment(doctor_id=doctor["id"], patient_id=patient2["id"], appointment_date=appointment_date, start_time="09:15")
+        appointments.extend([appt1, appt2])
 
-        # Book two appointments for same doctor to test FIFO queue behavior
-        appointment1_id = book_appointment(patient1_id, doctor_id)
-        appointment2_id = book_appointment(patient2_id, doctor_id)
+        # Initially, queue should reflect appointment order by start_time (FIFO)
+        queue_status = get_queue_status(doctor["id"])
+        # Validate queue is ordered by start_time ascending
+        appointment_ids_in_queue = [item["appointment_id"] for item in queue_status.get("queue", [])]
+        assert appt1["id"] in appointment_ids_in_queue
+        assert appt2["id"] in appointment_ids_in_queue
+        assert appointment_ids_in_queue.index(appt1["id"]) < appointment_ids_in_queue.index(appt2["id"]), "FIFO order violated"
 
-        # Check initial queue status: both patients in queue, patient1 ahead of patient2 (FIFO)
-        queue_status = get_queue_status(doctor_id)
-        assert isinstance(queue_status, dict), "Queue status response must be a dict"
-        queue_list = queue_status.get("queue")
-        assert isinstance(queue_list, list), "Queue list must be a list"
-        # Expect at least two patients in queue and patient1 position before patient2
-        positions = {entry["appointment_id"]: entry["position"] for entry in queue_list}
-        assert appointment1_id in positions, "Patient 1 appointment not in queue"
-        assert appointment2_id in positions, "Patient 2 appointment not in queue"
-        assert positions[appointment1_id] < positions[appointment2_id], "FIFO order violated in queue"
+        # Validate each queue item has valid status and position
+        for idx, item in enumerate(queue_status.get("queue", []), start=1):
+            assert "status" in item
+            assert "appointment_id" in item
+            assert item["position"] == idx
 
-        # Simulate patient1 check-in to update status to CHECKED_IN
-        checkin_resp = checkin_appointment(appointment1_id)
-        assert checkin_resp.get("status") == "CHECKED_IN", "Patient1 should be checked-in"
+        # Simulate patient1 checking in to move status forward and check queue updates
+        update_appointment_status(appt1["id"], "CHECKED_IN")
+        time.sleep(1)  # wait briefly for queue to update
 
-        # Queue should reflect update: patient1 now CHECKED_IN and position 1
-        queue_status_updated = get_queue_status(doctor_id)
-        queue_list_updated = queue_status_updated.get("queue")
-        patient1_entry = next((q for q in queue_list_updated if q["appointment_id"] == appointment1_id), None)
-        patient2_entry = next((q for q in queue_list_updated if q["appointment_id"] == appointment2_id), None)
-        assert patient1_entry is not None and patient2_entry is not None, "Both patients should be in updated queue"
-        # Patient1 position should remain ahead in queue
-        assert patient1_entry["position"] < patient2_entry["position"], "Queue order not maintained after check-in"
-        assert patient1_entry["status"] == "CHECKED_IN", "Patient1 status should be CHECKED_IN"
+        # After patient1 checked in, verify queue status updates accordingly
+        queue_status_after_checkin = get_queue_status(doctor["id"])
+        appt1_position = None
+        appt1_status = None
+        appt2_position = None
+        appt2_status = None
+        for item in queue_status_after_checkin.get("queue", []):
+            if item["appointment_id"] == appt1["id"]:
+                appt1_position = item["position"]
+                appt1_status = item["status"]
+            if item["appointment_id"] == appt2["id"]:
+                appt2_position = item["position"]
+                appt2_status = item["status"]
 
-        # Simulate patient1 consultation start and end (status changes)
-        resp_start = requests.post(f"{BASE_URL}/api/appointments/{appointment1_id}/start_consultation/", headers=HEADERS, timeout=TIMEOUT)
-        resp_start.raise_for_status()
-        resp_end = requests.post(f"{BASE_URL}/api/appointments/{appointment1_id}/end_consultation/", headers=HEADERS, timeout=TIMEOUT)
-        resp_end.raise_for_status()
+        # Patient1 should be at front or in-progress in the queue (position 1)
+        assert appt1_position == 1
+        assert appt1_status in ["CHECKED_IN", "IN_PROGRESS"]
+        # Patient2 should be next in line (position 2)
+        assert appt2_position == 2
+        assert appt2_status == "SCHEDULED"
 
-        # Queue updates after patient1 consultation ended, patient1 should be COMPLETED and patient2 moves up in position
-        queue_status_post_consult = get_queue_status(doctor_id)
-        queue_list_post = queue_status_post_consult.get("queue")
+        # Simulate patient1 moving to IN_PROGRESS and completing consultation to test queue updates and notifications
+        update_appointment_status(appt1["id"], "IN_PROGRESS")
+        time.sleep(1)
+        queue_status_in_progress = get_queue_status(doctor["id"])
+        # Patient1 still position 1, status IN_PROGRESS
+        found_appt1 = next((i for i in queue_status_in_progress.get("queue", []) if i["appointment_id"] == appt1["id"]), None)
+        assert found_appt1 is not None
+        assert found_appt1["status"] == "IN_PROGRESS"
+        assert found_appt1["position"] == 1
 
-        # Patient1 should no longer be active in queue or have status COMPLETED
-        patient1_post = next((q for q in queue_list_post if q["appointment_id"] == appointment1_id), None)
-        patient2_post = next((q for q in queue_list_post if q["appointment_id"] == appointment2_id), None)
-        
-        if patient1_post:
-            assert patient1_post["status"] == "COMPLETED", "Patient1 status should be COMPLETED after consultation"
-        # Patient2 should have position 1 now
-        assert patient2_post is not None, "Patient2 must be in queue after patient1 consultation ends"
-        assert patient2_post["position"] == 1, "Patient2 position should be updated to 1 after patient1 consultation ends"
+        # Patient2 still position 2, status SCHEDULED
+        found_appt2 = next((i for i in queue_status_in_progress.get("queue", []) if i["appointment_id"] == appt2["id"]), None)
+        assert found_appt2 is not None
+        assert found_appt2["status"] == "SCHEDULED"
+        assert found_appt2["position"] == 2
 
-        # Check notification fields exist for queue entries (simulate notifications)
-        for entry in queue_list_post:
-            assert "notifications" in entry, "Queue entry must include notification info"
-            notifications = entry["notifications"]
-            assert isinstance(notifications, dict), "Notifications must be a dictionary"
-            # Should at least have notification channels listed, e.g. in_app, email, sms
-            for channel in ['in_app', 'email', 'sms']:
-                assert channel in notifications, f"Notification channel '{channel}' missing"
-                assert isinstance(notifications[channel], bool), f"Notification channel '{channel}' should be boolean"
+        # Complete patient1 appointment to remove from queue
+        update_appointment_status(appt1["id"], "COMPLETED")
+        time.sleep(1)
+        queue_status_completed = get_queue_status(doctor["id"])
+        # Patient1 should no longer be in the queue
+        appointment_ids = [item["appointment_id"] for item in queue_status_completed.get("queue", [])]
+        assert appt1["id"] not in appointment_ids
+        # Patient2 should now be position 1 and possibly notified (notification check via API)
+        found_appt2_post = next((i for i in queue_status_completed.get("queue", []) if i["appointment_id"] == appt2["id"]), None)
+        assert found_appt2_post is not None
+        assert found_appt2_post["position"] == 1
+
+        # Optionally check notifications endpoint for patient2
+        r = requests.get(f"{BASE_URL}/api/notifications/?patient_id={patient2['id']}", timeout=TIMEOUT)
+        r.raise_for_status()
+        notifications = r.json().get("notifications", [])
+        # Assert at least one notification related to queue position or status update for patient2
+        notif_found = any(
+            ("queue" in n.get("type", "").lower() or "appointment" in n.get("message", "").lower())
+            for n in notifications
+        )
+        assert notif_found, "Expected queue-related notification for patient2"
 
     finally:
-        # Cleanup all created resources
-        if appointment1_id:
-            cancel_appointment(appointment1_id)
-        if appointment2_id:
-            cancel_appointment(appointment2_id)
-        if patient1_id:
-            delete_patient(patient1_id)
-        if patient2_id:
-            delete_patient(patient2_id)
-        if doctor_id:
-            delete_doctor(doctor_id)
+        # Cleanup: delete all created appointments, patients, and doctor
+        for appt in appointments:
+            try:
+                delete_appointment(appt["id"])
+            except Exception:
+                pass
+        try:
+            delete_patient(patient1["id"])
+        except Exception:
+            pass
+        try:
+            delete_patient(patient2["id"])
+        except Exception:
+            pass
+        try:
+            delete_doctor(doctor["id"])
+        except Exception:
+            pass
 
 test_real_time_queue_tracking()

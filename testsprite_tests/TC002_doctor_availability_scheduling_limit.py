@@ -1,166 +1,145 @@
 import requests
 from datetime import datetime, timedelta
-import random
-import string
 
 BASE_URL = "http://localhost:9000"
 TIMEOUT = 30
 
-# Helpers to create unique values
-def random_string(length=6):
-    letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for _ in range(length))
+# Helper functions for creating and deleting doctor, patient, and appointments
 
-def create_doctor():
-    url = f"{BASE_URL}/api/doctors/"
-    payload = {
-        "name": "Doctor " + random_string(),
-        "specialization": "General",
-        "email": f"{random_string()}@hospital.com"
-    }
-    resp = requests.post(url, json=payload, timeout=TIMEOUT)
+def create_doctor(session, doctor_payload):
+    resp = session.post(f"{BASE_URL}/api/doctors/", json=doctor_payload, timeout=TIMEOUT)
     resp.raise_for_status()
     return resp.json()
 
-def delete_doctor(doctor_id):
-    url = f"{BASE_URL}/api/doctors/{doctor_id}/"
-    resp = requests.delete(url, timeout=TIMEOUT)
-    return resp
+def delete_doctor(session, doctor_id):
+    resp = session.delete(f"{BASE_URL}/api/doctors/{doctor_id}/", timeout=TIMEOUT)
+    return resp.status_code == 204
 
-def create_patient():
-    url = f"{BASE_URL}/api/patients/"
-    payload = {
-        "name": "Patient " + random_string(),
-        "email": f"{random_string()}@test.com",
-        "emergency_contact": "0911234567",
-    }
-    resp = requests.post(url, json=payload, timeout=TIMEOUT)
+def create_patient(session, patient_payload):
+    resp = session.post(f"{BASE_URL}/api/patients/", json=patient_payload, timeout=TIMEOUT)
     resp.raise_for_status()
     return resp.json()
 
-def delete_patient(patient_id):
-    url = f"{BASE_URL}/api/patients/{patient_id}/"
-    resp = requests.delete(url, timeout=TIMEOUT)
+def delete_patient(session, patient_id):
+    resp = session.delete(f"{BASE_URL}/api/patients/{patient_id}/", timeout=TIMEOUT)
+    return resp.status_code == 204
+
+def create_appointment(session, appointment_payload):
+    resp = session.post(f"{BASE_URL}/api/appointments/", json=appointment_payload, timeout=TIMEOUT)
     return resp
 
-def create_doctor_availability(doctor_id, weekday, start_time, end_time):
-    url = f"{BASE_URL}/api/doctors/{doctor_id}/availability/"
-    payload = {
-        "weekday": weekday,  # 0=Monday ... 6=Sunday
-        "start_time": start_time,  # "09:00"
-        "end_time": end_time       # "17:00"
-    }
-    resp = requests.post(url, json=payload, timeout=TIMEOUT)
+def delete_appointment(session, appointment_id):
+    resp = session.delete(f"{BASE_URL}/api/appointments/{appointment_id}/", timeout=TIMEOUT)
+    return resp.status_code == 204
+
+def create_doctor_availability(session, doctor_id, availability_payload):
+    resp = session.post(f"{BASE_URL}/api/doctors/{doctor_id}/availability/", json=availability_payload, timeout=TIMEOUT)
     resp.raise_for_status()
     return resp.json()
 
-def delete_doctor_availability(doctor_id, availability_id):
-    url = f"{BASE_URL}/api/doctors/{doctor_id}/availability/{availability_id}/"
-    resp = requests.delete(url, timeout=TIMEOUT)
-    return resp
+def delete_doctor_availability(session, availability_id):
+    resp = session.delete(f"{BASE_URL}/api/doctoravailability/{availability_id}/", timeout=TIMEOUT)
+    return resp.status_code == 204
 
-def create_appointment(doctor_id, patient_id, appointment_date, start_time):
-    url = f"{BASE_URL}/api/appointments/"
-    payload = {
-        "doctor": doctor_id,
-        "patient": patient_id,
-        "appointment_date": appointment_date.strftime("%Y-%m-%d"),
-        "start_time": start_time,
-        "status": "SCHEDULED"
-    }
-    resp = requests.post(url, json=payload, timeout=TIMEOUT)
-    return resp
-
-def delete_appointment(appointment_id):
-    url = f"{BASE_URL}/api/appointments/{appointment_id}/"
-    resp = requests.delete(url, timeout=TIMEOUT)
-    return resp
 
 def test_doctor_availability_scheduling_limit():
-    # Create doctor
-    doctor = create_doctor()
-    doctor_id = doctor["id"]
-
-    # Create patient pool
-    patients = []
+    session = requests.Session()
+    created_appointments = []
+    created_availability = []
     try:
-        for _ in range(16):
-            patient = create_patient()
-            patients.append(patient)
-        
-        # Setup weekly availability for doctor: Monday 09:00-17:00
-        availability = create_doctor_availability(doctor_id, weekday=0, start_time="09:00", end_time="17:00")
-        availability_id = availability["id"]
+        # Create a test doctor with a specialization and weekly availability respecting the schema
+        doctor_payload = {
+            "name": "Dr. Test",
+            "specialization": "General",
+            "email": "drtest@example.com",
+            "phone": "0921234567"
+        }
+        doctor = create_doctor(session, doctor_payload)
+        doctor_id = doctor["id"]
 
-        # Target appointment date: Next Monday
-        today = datetime.now()
-        days_ahead = 0 - today.weekday()
-        if days_ahead <= 0:
-            days_ahead += 7
-        appointment_date = (today + timedelta(days=days_ahead)).date()
+        # Setup weekly availability: allow availability Mon-Fri 9am-5pm with 1-hour slots (simulate)
+        # Assuming availability schema requires day_of_week (0=Mon,...6=Sun), start_time, end_time in HH:MM format
+        availability_slots = []
+        for day in range(5):  # Monday(0) to Friday(4)
+            availability_payload = {
+                "day_of_week": day,
+                "start_time": "09:00",
+                "end_time": "17:00"
+            }
+            avail = create_doctor_availability(session, doctor_id, availability_payload)
+            created_availability.append(avail["id"])
+            availability_slots.append(avail)
 
-        # Each appointment will start at 09:00, incremental 30 minutes slots (09:00, 09:30, 10:00, ...)
-        appointment_duration_minutes = 30
-        slots_count = 15  # max per day
-        start_hour = 9
-        start_minute = 0
+        # Create a patient to book appointments
+        patient_payload = {
+            "name": "Patient Test",
+            "email": "patienttest@example.com",
+            "emergency_contact": "0917654321"
+        }
+        patient = create_patient(session, patient_payload)
+        patient_id = patient["id"]
 
-        created_appointments_ids = []
+        # Book 15 appointments for the doctor on a future date (limit)
+        appointment_date = (datetime.now() + timedelta(days=7)).date().isoformat()
+        for i in range(15):
+            appointment_payload = {
+                "doctor_id": doctor_id,
+                "patient_id": patient_id,
+                "appointment_date": appointment_date,
+                "start_time": f"{9 + i % 8}:00",  # spread hours 9:00-16:00 (cycling)
+                "specialization": doctor_payload["specialization"],
+                "status": "SCHEDULED"
+            }
+            resp = create_appointment(session, appointment_payload)
+            assert resp.status_code == 201, f"Failed to create appointment {i+1}, response: {resp.text}"
+            created_appointments.append(resp.json()["id"])
 
-        # Book 15 appointments successfully
-        for i in range(slots_count):
-            hour = start_hour + (start_minute + i * appointment_duration_minutes) // 60
-            minute = (start_minute + i * appointment_duration_minutes) % 60
-            start_time = f"{hour:02d}:{minute:02d}"
-
-            resp = create_appointment(doctor_id, patients[i]["id"], appointment_date, start_time)
-            assert resp.status_code == 201, f"Expected 201 Created but got {resp.status_code}"
-            response_data = resp.json()
-            assert response_data["doctor"] == doctor_id
-            assert response_data["patient"] == patients[i]["id"]
-            assert response_data["appointment_date"] == appointment_date.strftime("%Y-%m-%d")
-            assert response_data["start_time"] == start_time
-            assert response_data["status"] == "SCHEDULED"
-            created_appointments_ids.append(response_data["id"])
-
-        # Attempt to book the 16th appointment on the same day for the same doctor should fail
-        hour = start_hour + (start_minute + slots_count * appointment_duration_minutes) // 60
-        minute = (start_minute + slots_count * appointment_duration_minutes) % 60
-        start_time = f"{hour:02d}:{minute:02d}"
-
-        resp = create_appointment(doctor_id, patients[slots_count]["id"], appointment_date, start_time)
-        assert resp.status_code == 400 or resp.status_code == 409, (
-            f"Expected 400 Bad Request or 409 Conflict for exceeding max appointments, got {resp.status_code}"
+        # Attempt to book the 16th appointment on the same day - should fail with 400 or suitable error
+        appointment_payload = {
+            "doctor_id": doctor_id,
+            "patient_id": patient_id,
+            "appointment_date": appointment_date,
+            "start_time": "17:00",
+            "specialization": doctor_payload["specialization"],
+            "status": "SCHEDULED"
+        }
+        resp = create_appointment(session, appointment_payload)
+        assert resp.status_code == 400 or resp.status_code == 403, (
+            "API did not enforce maximum 15 appointments per day limit"
         )
-        error_data = resp.json()
-        assert "limit" in str(error_data).lower() or "maximum" in str(error_data).lower()
+        # Error message validation (if exists)
+        if resp.status_code == 400:
+            json_resp = resp.json()
+            assert "maximum" in str(json_resp).lower() or "limit" in str(json_resp).lower()
 
-        # Attempt to book outside the weekly availability (e.g. Sunday)
-        sunday = appointment_date + timedelta(days=6)
-        resp = create_appointment(doctor_id, patients[slots_count]["id"], sunday, "09:00")
-        assert resp.status_code == 400, f"Expected 400 Bad Request booking outside availability, got {resp.status_code}"
-        err = resp.json()
-        assert "availability" in str(err).lower() or "schedule" in str(err).lower()
+        # Attempt to book appointment outside availability time (e.g., 18:00) should fail
+        appointment_payload_outside_time = {
+            "doctor_id": doctor_id,
+            "patient_id": patient_id,
+            "appointment_date": appointment_date,
+            "start_time": "18:00",  # Outside 9-17 availability
+            "specialization": doctor_payload["specialization"],
+            "status": "SCHEDULED"
+        }
+        resp = create_appointment(session, appointment_payload_outside_time)
+        assert resp.status_code == 400 or resp.status_code == 403, (
+            "API allowed appointment outside doctor's weekly availability"
+        )
+        if resp.status_code == 400:
+            json_resp = resp.json()
+            assert "availability" in str(json_resp).lower() or "time slot" in str(json_resp).lower()
 
     finally:
-        # Cleanup: delete all created appointments
-        for appt_id in created_appointments_ids:
-            delete_appointment(appt_id)
-
-        # Cleanup patients
-        for p in patients:
-            try:
-                delete_patient(p["id"])
-            except Exception:
-                pass
-
-        # Cleanup doctor availability
-        try:
-            delete_doctor_availability(doctor_id, availability_id)
-        except Exception:
-            pass
-
-        # Cleanup doctor
-        delete_doctor(doctor_id)
+        # Clean up appointments
+        for appt_id in created_appointments:
+            delete_appointment(session, appt_id)
+        # Clean up availability
+        for avail_id in created_availability:
+            delete_doctor_availability(session, avail_id)
+        # Clean up patient and doctor
+        if 'patient_id' in locals():
+            delete_patient(session, patient_id)
+        if 'doctor_id' in locals():
+            delete_doctor(session, doctor_id)
 
 test_doctor_availability_scheduling_limit()

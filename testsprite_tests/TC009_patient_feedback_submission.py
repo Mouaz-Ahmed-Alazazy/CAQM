@@ -1,120 +1,116 @@
 import requests
+import pytest
 
 BASE_URL = "http://localhost:9000"
 TIMEOUT = 30
+HEADERS = {"Content-Type": "application/json"}
+FEEDBACK_ENDPOINT = f"{BASE_URL}/api/patient-feedback/"
+
+def create_dummy_doctor():
+    url = f"{BASE_URL}/api/doctors/"
+    payload = {
+        "name": "Dr. Test Doctor",
+        "specialization": "General",
+        "email": "doctor.test@example.com"
+    }
+    resp = requests.post(url, json=payload, timeout=TIMEOUT, headers=HEADERS)
+    resp.raise_for_status()
+    return resp.json()["id"]
+
+def delete_dummy_doctor(doctor_id):
+    url = f"{BASE_URL}/api/doctors/{doctor_id}/"
+    requests.delete(url, timeout=TIMEOUT, headers=HEADERS)
+
+def create_dummy_patient():
+    url = f"{BASE_URL}/api/patients/"
+    payload = {
+        "name": "Test Patient",
+        "email": "patient.test@example.com",
+        "emergency_contact": "0911234567"
+    }
+    resp = requests.post(url, json=payload, timeout=TIMEOUT, headers=HEADERS)
+    resp.raise_for_status()
+    return resp.json()["id"]
+
+def delete_dummy_patient(patient_id):
+    url = f"{BASE_URL}/api/patients/{patient_id}/"
+    requests.delete(url, timeout=TIMEOUT, headers=HEADERS)
+
 
 def test_patient_feedback_submission():
-    headers = {
-        "Content-Type": "application/json",
-    }
-
-    feedback_url = f"{BASE_URL}/api/patients/feedback/"
-
-    # Use fixed patient_id and doctor_id since creation endpoints do not exist or are inaccessible
-    patient_id = 1
-    doctor_id = 1
-    feedback_id = None
-
+    # Setup: create doctor and patient needed for feedback
+    doctor_id = None
+    patient_id = None
     try:
-        # 1) Test successful feedback submission with all required fields
-        feedback_payload = {
+        doctor_id = create_dummy_doctor()
+        patient_id = create_dummy_patient()
+
+        valid_feedback_payload = {
             "patient_id": patient_id,
             "doctor_id": doctor_id,
-            "rating": 4,
-            "service_rating": 5,
-            "feedback_text": "The doctor provided excellent care and the clinic was very efficient."
+            "rating": 5,
+            "feedback_text": "Excellent care and attention.",
+            "clinic_service_rating": 4
         }
 
-        feedback_resp = requests.post(feedback_url, json=feedback_payload, headers=headers, timeout=TIMEOUT)
-        assert feedback_resp.status_code == 201, f"Failed to submit feedback: {feedback_resp.text}"
-        feedback_data = feedback_resp.json()
-        feedback_id = feedback_data.get("id")
-        assert feedback_id is not None, "Feedback ID not returned"
-        # Validate returned feedback data matches input where applicable
-        assert feedback_data.get("patient_id") == patient_id
-        assert feedback_data.get("doctor_id") == doctor_id
-        assert feedback_data.get("rating") == feedback_payload["rating"]
-        assert feedback_data.get("service_rating") == feedback_payload["service_rating"]
-        assert feedback_data.get("feedback_text") == feedback_payload["feedback_text"]
+        # Positive test: submit valid feedback
+        response = requests.post(FEEDBACK_ENDPOINT, json=valid_feedback_payload, headers=HEADERS, timeout=TIMEOUT)
+        assert response.status_code == 201, f"Expected 201 Created, got {response.status_code}"
+        data = response.json()
+        assert "id" in data, "Response missing feedback id"
+        assert data["rating"] == 5
+        assert data["clinic_service_rating"] == 4
+        assert data["feedback_text"] == "Excellent care and attention."
+        assert data["doctor_id"] == doctor_id
+        assert data["patient_id"] == patient_id
 
-        # 2) Test validation: missing required field patient_id
-        invalid_payload_1 = {
-            "doctor_id": doctor_id,
-            "rating": 4,
-            "service_rating": 5,
-            "feedback_text": "Some feedback"
-        }
-        resp_invalid_1 = requests.post(feedback_url, json=invalid_payload_1, headers=headers, timeout=TIMEOUT)
-        assert resp_invalid_1.status_code == 400, "Expected 400 error for missing patient_id"
-        assert "patient_id" in resp_invalid_1.text.lower()
+        # Negative tests for required fields validation:
+        # Missing patient_id
+        payload_missing_patient = valid_feedback_payload.copy()
+        del payload_missing_patient["patient_id"]
+        response = requests.post(FEEDBACK_ENDPOINT, json=payload_missing_patient, headers=HEADERS, timeout=TIMEOUT)
+        assert response.status_code == 400
+        assert "patient_id" in response.text or "patient" in response.text
 
-        # 3) Test validation: missing rating
-        invalid_payload_2 = {
-            "patient_id": patient_id,
-            "doctor_id": doctor_id,
-            "service_rating": 5,
-            "feedback_text": "Some feedback"
-        }
-        resp_invalid_2 = requests.post(feedback_url, json=invalid_payload_2, headers=headers, timeout=TIMEOUT)
-        assert resp_invalid_2.status_code == 400, "Expected 400 error for missing rating"
-        assert "rating" in resp_invalid_2.text.lower()
+        # Missing doctor_id
+        payload_missing_doctor = valid_feedback_payload.copy()
+        del payload_missing_doctor["doctor_id"]
+        response = requests.post(FEEDBACK_ENDPOINT, json=payload_missing_doctor, headers=HEADERS, timeout=TIMEOUT)
+        assert response.status_code == 400
+        assert "doctor_id" in response.text or "doctor" in response.text
 
-        # 4) Test validation: rating out of allowed range (e.g., 0)
-        invalid_payload_3 = {
-            "patient_id": patient_id,
-            "doctor_id": doctor_id,
-            "rating": 0,
-            "service_rating": 5,
-            "feedback_text": "Invalid rating low"
-        }
-        resp_invalid_3 = requests.post(feedback_url, json=invalid_payload_3, headers=headers, timeout=TIMEOUT)
-        assert resp_invalid_3.status_code == 400, "Expected 400 error for rating out of range"
-        assert "rating" in resp_invalid_3.text.lower()
+        # Missing rating
+        payload_missing_rating = valid_feedback_payload.copy()
+        del payload_missing_rating["rating"]
+        response = requests.post(FEEDBACK_ENDPOINT, json=payload_missing_rating, headers=HEADERS, timeout=TIMEOUT)
+        assert response.status_code == 400
+        assert "rating" in response.text
 
-        # 5) Test validation: rating out of allowed range (e.g., 6)
-        invalid_payload_4 = {
-            "patient_id": patient_id,
-            "doctor_id": doctor_id,
-            "rating": 6,
-            "service_rating": 5,
-            "feedback_text": "Invalid rating high"
-        }
-        resp_invalid_4 = requests.post(feedback_url, json=invalid_payload_4, headers=headers, timeout=TIMEOUT)
-        assert resp_invalid_4.status_code == 400, "Expected 400 error for rating out of range"
-        assert "rating" in resp_invalid_4.text.lower()
+        # Rating out of accepted range (assuming 1-5)
+        payload_invalid_rating = valid_feedback_payload.copy()
+        payload_invalid_rating["rating"] = 6
+        response = requests.post(FEEDBACK_ENDPOINT, json=payload_invalid_rating, headers=HEADERS, timeout=TIMEOUT)
+        assert response.status_code == 400
+        assert "rating" in response.text or "invalid" in response.text.lower()
 
-        # 6) Test validation: missing service_rating
-        invalid_payload_5 = {
-            "patient_id": patient_id,
-            "doctor_id": doctor_id,
-            "rating": 4,
-            "feedback_text": "Missing service rating"
-        }
-        resp_invalid_5 = requests.post(feedback_url, json=invalid_payload_5, headers=headers, timeout=TIMEOUT)
-        assert resp_invalid_5.status_code == 400, "Expected 400 error for missing service_rating"
-        assert "service_rating" in resp_invalid_5.text.lower()
+        # Missing clinic_service_rating (assuming required)
+        payload_missing_clinic_rating = valid_feedback_payload.copy()
+        del payload_missing_clinic_rating["clinic_service_rating"]
+        response = requests.post(FEEDBACK_ENDPOINT, json=payload_missing_clinic_rating, headers=HEADERS, timeout=TIMEOUT)
+        assert response.status_code == 400
+        assert "clinic_service_rating" in response.text
 
-        # 7) Test validation: missing feedback_text (if required)
-        invalid_payload_6 = {
-            "patient_id": patient_id,
-            "doctor_id": doctor_id,
-            "rating": 4,
-            "service_rating": 5,
-        }
-        resp_invalid_6 = requests.post(feedback_url, json=invalid_payload_6, headers=headers, timeout=TIMEOUT)
-        # Assuming feedback_text is required, expect 400; if optional, expect success
-        # We'll assert 400 if feedback_text is required
-        assert resp_invalid_6.status_code in (400, 201), "Unexpected status code for missing feedback_text"
-        if resp_invalid_6.status_code == 400:
-            assert "feedback_text" in resp_invalid_6.text.lower()
+        # Feedback text optional: test empty feedback_text allowed if API design permits
+        payload_no_feedback_text = valid_feedback_payload.copy()
+        payload_no_feedback_text["feedback_text"] = ""
+        response = requests.post(FEEDBACK_ENDPOINT, json=payload_no_feedback_text, headers=HEADERS, timeout=TIMEOUT)
+        # Accept either success or validation failure depending on API design - here assume success allowed
+        assert response.status_code in (200, 201)
 
     finally:
-        # Cleanup: delete created feedback if ID available
-        if feedback_id:
-            feedback_del_url = f"{feedback_url}{feedback_id}/"
-            try:
-                requests.delete(feedback_del_url, headers=headers, timeout=TIMEOUT)
-            except Exception:
-                pass
+        if patient_id:
+            delete_dummy_patient(patient_id)
+        if doctor_id:
+            delete_dummy_doctor(doctor_id)
 
 test_patient_feedback_submission()

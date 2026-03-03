@@ -20,55 +20,56 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
-    load_dotenv(BASE_DIR / '.env')
+
+    load_dotenv(BASE_DIR / ".env")
 except ImportError:
     pass  # python-dotenv not installed, use system env vars
 
 # Determine if running on Render
-IS_RENDER = os.environ.get('RENDER') == 'true'
+IS_RENDER = os.environ.get("RENDER") == "true"
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY: Load SECRET_KEY from environment variable
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     # Fallback for development only
     SECRET_KEY = "dev-only-insecure-key-change-in-production"
     import warnings
+
     warnings.warn(
-        "DJANGO_SECRET_KEY not set. Using insecure development key.",
-        RuntimeWarning
+        "DJANGO_SECRET_KEY not set. Using insecure development key.", RuntimeWarning
     )
 
 # SECURITY: DEBUG mode from environment (defaults to True for safety during development)
-DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
+DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
 
 # SECURITY: Properly configure allowed hosts
 # Default allows Replit domains for development
 if IS_RENDER:
-    _default_hosts = 'localhost,127.0.0.1,.onrender.com'
+    _default_hosts = "localhost,127.0.0.1,.onrender.com"
     # Add the specific Render hostname if available
-    render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+    render_external_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
     if render_external_hostname:
-        _default_hosts += f',{render_external_hostname}'
+        _default_hosts += f",{render_external_hostname}"
 else:
-    _default_hosts = 'localhost,127.0.0.1,.replit.dev,.replit.app,.repl.co'
+    _default_hosts = "localhost,127.0.0.1,.replit.dev,.replit.app,.repl.co"
 
 ALLOWED_HOSTS = []
-for host in os.environ.get('ALLOWED_HOSTS', _default_hosts).split(','):
+for host in os.environ.get("ALLOWED_HOSTS", _default_hosts).split(","):
     if host.strip():
         ALLOWED_HOSTS.append(host.strip())
 
 # Production security settings
-if not DEBUG:  
+if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
+    X_FRAME_OPTIONS = "DENY"
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
@@ -83,7 +84,7 @@ else:
 
 # Tell Django to trust proxy headers from Replit's HTTPS proxy
 # This fixes "accessing dev server over HTTPS" error
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
@@ -99,7 +100,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Add specific Render URL to trusted origins if available
-if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
     CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}")
 
 
@@ -121,7 +122,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "cloudinary_storage",
-    "cloudinary", 
+    "cloudinary",
     # Local
     "accounts",
     "admins",
@@ -149,7 +150,7 @@ ROOT_URLCONF = "caqm_project.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / 'templates'],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -168,18 +169,27 @@ WSGI_APPLICATION = "caqm_project.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+import sys
+
+TESTING = len(sys.argv) > 1 and sys.argv[1] == "test" or "pytest" in sys.modules
+
+if TESTING:
+    PASSWORD_HASHERS = [
+        "django.contrib.auth.hashers.MD5PasswordHasher",
+    ]
+
 # Use DATABASE_URL if provided (for Render deployment)
-if os.environ.get('DATABASE_URL'):
+if os.environ.get("DATABASE_URL") and not TESTING:
     DATABASES = {
-        'default': dj_database_url.config(
-            default=os.environ.get('DATABASE_URL'),
+        "default": dj_database_url.config(
+            default=os.environ.get("DATABASE_URL"),
             conn_max_age=600,
             conn_health_checks=True,
         )
     }
 else:
     DATABASES = {
-        'default': {
+        "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
@@ -220,26 +230,32 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATIC_URL = "/static/"
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATICFILES_STORAGE = (
+    "django.contrib.staticfiles.storage.StaticFilesStorage"
+    if TESTING
+    else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+)
 
 # Media files (User uploaded files)
-MEDIA_URL = '/media/'
+MEDIA_URL = "/media/"
 if "Render" in os.environ:
-    MEDIA_ROOT = os.environ.get("RENDER_MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))
+    MEDIA_ROOT = os.environ.get("RENDER_MEDIA_ROOT", os.path.join(BASE_DIR, "media"))
 else:
-    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Update the STORGES dictioonary to use Cloudinary for media storage
-CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL')
+CLOUDINARY_URL = os.environ.get("CLOUDINARY_URL")
 STORAGES = {
-    'default': {
-        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
-    'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        if TESTING
+        else "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
@@ -250,18 +266,18 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Authentication
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
 SITE_ID = 1
 
 
-AUTH_USER_MODEL = 'accounts.User'
+AUTH_USER_MODEL = "accounts.User"
 
-LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'patients:home'
-LOGOUT_REDIRECT_URL = 'accounts:login'
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "patients:home"
+LOGOUT_REDIRECT_URL = "accounts:login"
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
@@ -271,29 +287,29 @@ MAX_APPOINTMENTS_PER_DAY = 15
 DEFAULT_CONSULTATION_DURATION = 20  # minutes
 MAX_QUEUE_SIZE = 50
 
-ACCOUNT_LOGIN_METHODS = {'email'}
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
-ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
-SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
 SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'SCOPE': [
-            'profile',
-            'email',
+    "google": {
+        "SCOPE": [
+            "profile",
+            "email",
         ],
-        'AUTH_PARAMS': {
-            'access_type': 'online',
+        "AUTH_PARAMS": {
+            "access_type": "online",
         },
     }
 }
 
-ACCOUNT_ADAPTER = 'accounts.adapters.CustomAccountAdapter'
-SOCIALACCOUNT_ADAPTER = 'accounts.adapters.CustomSocialAccountAdapter'
+ACCOUNT_ADAPTER = "accounts.adapters.CustomAccountAdapter"
+SOCIALACCOUNT_ADAPTER = "accounts.adapters.CustomSocialAccountAdapter"

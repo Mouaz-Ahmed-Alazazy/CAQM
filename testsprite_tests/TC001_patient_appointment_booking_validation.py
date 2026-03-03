@@ -1,153 +1,151 @@
 import requests
-from datetime import datetime, timedelta
+import datetime
 import pytest
 
 BASE_URL = "http://localhost:9000"
 TIMEOUT = 30
-
-# Assuming we have API endpoints:
-# POST /api/patients/          -> create patient
-# DELETE /api/patients/{id}/   -> delete patient
-# POST /api/doctors/           -> create doctor
-# DELETE /api/doctors/{id}/    -> delete doctor
-# POST /api/appointments/      -> book appointment
-# DELETE /api/appointments/{id}/ -> delete appointment
-
-HEADERS = {
-    "Content-Type": "application/json",
-    # Add authentication headers if needed, e.g.
-    # "Authorization": "Bearer <token>",
-}
-
+HEADERS = {'Content-Type': 'application/json'}
 
 def create_patient():
-    payload = {
-        "first_name": "Test",
-        "last_name": "Patient",
-        "email": f"test_patient_{datetime.utcnow().timestamp()}@example.com",
+    url = f"{BASE_URL}/patients/"
+    data = {
+        "name": "Test Patient",
+        "email": f"test.patient{datetime.datetime.utcnow().timestamp()}@example.com",
         "password": "TestPass123!",
         "emergency_contact": "0911234567"
     }
-    resp = requests.post(f"{BASE_URL}/api/patients/", json=payload, headers=HEADERS, timeout=TIMEOUT)
-    resp.raise_for_status()
-    return resp.json()
-
+    response = requests.post(url, json=data, headers=HEADERS, timeout=TIMEOUT)
+    response.raise_for_status()
+    return response.json()
 
 def delete_patient(patient_id):
-    requests.delete(f"{BASE_URL}/api/patients/{patient_id}/", headers=HEADERS, timeout=TIMEOUT)
+    url = f"{BASE_URL}/patients/{patient_id}/"
+    response = requests.delete(url, headers=HEADERS, timeout=TIMEOUT)
+    if response.status_code not in (204, 404):
+        response.raise_for_status()
 
-
-def create_doctor(specialization):
-    payload = {
-        "first_name": "Test",
-        "last_name": "Doctor",
-        "email": f"test_doctor_{specialization}_{datetime.utcnow().timestamp()}@example.com",
-        "password": "TestPass123!",
+def create_doctor(specialization="Cardiology"):
+    url = f"{BASE_URL}/doctors/"
+    data = {
+        "name": f"Dr Test {specialization}",
+        "email": f"dr.{specialization.lower()}{datetime.datetime.utcnow().timestamp()}@example.com",
         "specialization": specialization,
-        # adding minimal required fields for doctor creation
-        "availability": [
-          {"day": "Monday", "start_time": "09:00", "end_time": "17:00"},
-          {"day": "Tuesday", "start_time": "09:00", "end_time": "17:00"},
-          {"day": "Wednesday", "start_time": "09:00", "end_time": "17:00"},
-          {"day": "Thursday", "start_time": "09:00", "end_time": "17:00"},
-          {"day": "Friday", "start_time": "09:00", "end_time": "17:00"}
-        ]
+        "password": "DocPass123!"
     }
-    resp = requests.post(f"{BASE_URL}/api/doctors/", json=payload, headers=HEADERS, timeout=TIMEOUT)
-    resp.raise_for_status()
-    return resp.json()
-
+    response = requests.post(url, json=data, headers=HEADERS, timeout=TIMEOUT)
+    response.raise_for_status()
+    return response.json()
 
 def delete_doctor(doctor_id):
-    requests.delete(f"{BASE_URL}/api/doctors/{doctor_id}/", headers=HEADERS, timeout=TIMEOUT)
+    url = f"{BASE_URL}/doctors/{doctor_id}/"
+    response = requests.delete(url, headers=HEADERS, timeout=TIMEOUT)
+    if response.status_code not in (204, 404):
+        response.raise_for_status()
 
-
-def book_appointment(patient_id, doctor_id, appointment_date, start_time, specialization):
-    payload = {
-        "patient_id": patient_id,
-        "doctor_id": doctor_id,
-        "appointment_date": appointment_date,
-        "start_time": start_time,
-        "specialization": specialization,
-        "appointment_type": "SCHEDULED"
-    }
-    resp = requests.post(f"{BASE_URL}/api/appointments/", json=payload, headers=HEADERS, timeout=TIMEOUT)
-    return resp
-
+def create_appointment(payload):
+    url = f"{BASE_URL}/appointments/"
+    response = requests.post(url, json=payload, headers=HEADERS, timeout=TIMEOUT)
+    return response
 
 def delete_appointment(appointment_id):
-    requests.delete(f"{BASE_URL}/api/appointments/{appointment_id}/", headers=HEADERS, timeout=TIMEOUT)
-
+    url = f"{BASE_URL}/appointments/{appointment_id}/"
+    response = requests.delete(url, headers=HEADERS, timeout=TIMEOUT)
+    if response.status_code not in (204, 404):
+        response.raise_for_status()
 
 def test_patient_appointment_booking_validation():
-    # Create test patient
-    patient = create_patient()
-    patient_id = patient["id"]
-
-    # Create test doctor with specialization "Cardiology"
-    doctor = create_doctor("Cardiology")
-    doctor_id = doctor["id"]
-
-    appointments_created = []
+    # Setup patient and doctor
+    patient = None
+    doctor = None
+    created_appointments = []
     try:
-        today = datetime.utcnow().date()
-        past_date = (today - timedelta(days=1)).isoformat()
-        future_date = (today + timedelta(days=1)).isoformat()
-        start_time = "10:00"
+        patient = create_patient()
+        doctor = create_doctor(specialization="Cardiology")
 
-        # 1) Test booking an appointment for a past date (should fail)
-        resp = book_appointment(patient_id, doctor_id, past_date, start_time, "Cardiology")
-        assert resp.status_code == 400, "Booking appointment for past date should fail"
-        assert "past date" in resp.text.lower() or "invalid" in resp.text.lower()
+        patient_id = patient['id']
+        doctor_id = doctor['id']
+        specialization = doctor['specialization']
 
-        # 2) Book first appointment for patient in Cardiology specialization on future_date (should succeed)
-        resp = book_appointment(patient_id, doctor_id, future_date, start_time, "Cardiology")
-        assert resp.status_code == 201, f"Expected 201 Created, got {resp.status_code}"
-        appointment1 = resp.json()
-        appointments_created.append(appointment1["id"])
+        # 1. Test booking appointment for past date - should reject
+        past_date = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        payload_past = {
+            "patient_id": patient_id,
+            "doctor_id": doctor_id,
+            "specialization": specialization,
+            "appointment_date": past_date,
+            "start_time": "10:00",
+            "status": "SCHEDULED"
+        }
+        resp_past = create_appointment(payload_past)
+        assert resp_past.status_code == 400 or resp_past.status_code == 422
+        assert "past" in resp_past.text.lower()
 
-        # 3) Attempt to book another appointment for the same patient, same specialization, same day (should fail)
-        # Different doctor with same specialization (Create second doctor)
-        doctor2 = create_doctor("Cardiology")
-        doctor2_id = doctor2["id"]
-        try:
-            resp = book_appointment(patient_id, doctor2_id, future_date, "11:00", "Cardiology")
-            assert resp.status_code == 400, "Should not allow multiple appointments for same specialization per day per patient"
-            assert "one appointment per specialization" in resp.text.lower() or "already has an appointment" in resp.text.lower()
-        finally:
-            delete_doctor(doctor2_id)
+        # 2. Book one valid appointment for today
+        today_date = datetime.date.today().isoformat()
+        payload_valid = {
+            "patient_id": patient_id,
+            "doctor_id": doctor_id,
+            "specialization": specialization,
+            "appointment_date": today_date,
+            "start_time": "10:00",
+            "status": "SCHEDULED"
+        }
+        resp_valid = create_appointment(payload_valid)
+        assert resp_valid.status_code == 201
+        appointment1 = resp_valid.json()
+        created_appointments.append(appointment1['id'])
 
-        # 4) Book max 15 appointments for the doctor on the same date (different patients)
-        for i in range(2, 17):  # already 1 appointment booked above, book next 15 to exceed limit
-            new_patient = create_patient()
-            p_id = new_patient["id"]
-            try:
-                time = (10 + (i - 2)) % 17  # ensure different hour slots if needed
-                appointment_time = f"{time:02d}:00"
-                resp = book_appointment(p_id, doctor_id, future_date, appointment_time, "Cardiology")
-                if i <= 15:
-                    # up to 15 appointments should succeed
-                    assert resp.status_code == 201, f"Appointment {i} should be successful"
-                    app_id = resp.json()["id"]
-                    appointments_created.append(app_id)
-                else:
-                    # 16th appointment and above should fail
-                    assert resp.status_code == 400, "Should enforce max 15 appointments per doctor per day"
-                    assert "limit" in resp.text.lower() or "maximum" in resp.text.lower()
-                    break
-            finally:
-                delete_patient(p_id)
+        # 3. Attempt to book a second appointment for the same patient, same specialization, same day - should reject
+        payload_dup_spec = payload_valid.copy()
+        payload_dup_spec["start_time"] = "11:00"  # different time but same day and specialization
+        resp_dup_spec = create_appointment(payload_dup_spec)
+        assert resp_dup_spec.status_code == 400 or resp_dup_spec.status_code == 422
+        assert "one appointment per specialization per day" in resp_dup_spec.text.lower() or "already exists" in resp_dup_spec.text.lower()
+
+        # 4. Book up to 15 appointments for the same doctor, different patients or times
+        for i in range(2, 17):  # Already booked 1, now booking up to 16 to test limit
+            # Create different patient for each appointment after first
+            if i > 1:
+                new_patient = create_patient()
+                created_patient_id = new_patient['id']
+            else:
+                created_patient_id = patient_id
+
+            payload_limit = {
+                "patient_id": created_patient_id,
+                "doctor_id": doctor_id,
+                "specialization": specialization,
+                "appointment_date": today_date,
+                "start_time": f"{10 + i}:00",  # Different hour to avoid time collisions
+                "status": "SCHEDULED"
+            }
+            resp_limit = create_appointment(payload_limit)
+            if i <= 15:
+                # Should succeed for first 15 appointments total per doctor per day
+                assert resp_limit.status_code == 201
+                appointment_created = resp_limit.json()
+                created_appointments.append(appointment_created['id'])
+            else:
+                # This should fail - over 15 appointments
+                assert resp_limit.status_code == 400 or resp_limit.status_code == 422
+                assert "15 appointments" in resp_limit.text.lower() or "daily limit" in resp_limit.text.lower()
 
     finally:
-        # Cleanup appointments
-        for app_id in appointments_created:
+        # Cleanup created resources
+        for appt_id in created_appointments:
             try:
-                delete_appointment(app_id)
+                delete_appointment(appt_id)
             except Exception:
                 pass
-        # Cleanup patient and doctor
-        delete_patient(patient_id)
-        delete_doctor(doctor_id)
-
+        if patient:
+            try:
+                delete_patient(patient['id'])
+            except Exception:
+                pass
+        if doctor:
+            try:
+                delete_doctor(doctor['id'])
+            except Exception:
+                pass
 
 test_patient_appointment_booking_validation()

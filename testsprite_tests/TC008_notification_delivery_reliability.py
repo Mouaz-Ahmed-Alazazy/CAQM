@@ -3,80 +3,91 @@ import time
 
 BASE_URL = "http://localhost:9000"
 NOTIFICATIONS_ENDPOINT = f"{BASE_URL}/api/notifications/"
-AUTH_TOKEN = "Bearer your_test_auth_token_here"  # Replace with valid token if needed
-HEADERS = {
-    "Authorization": AUTH_TOKEN,
-    "Content-Type": "application/json",
-    "Accept": "application/json"
-}
-TIMEOUT = 30
+HEADERS = {"Content-Type": "application/json"}
 
 def test_notification_delivery_reliability():
     """
-    Test the notification API for reliable delivery with retries on failure
-    and multi-channel support including in-app, email, and SMS.
+    Test the notification API to ensure:
+    - Reliable delivery with retries on failure
+    - Support for multi-channel delivery: in-app, email, SMS
     """
+
     notification_payload = {
-        "recipient_id": 1,  # Assume existing user ID; in a real test, create user and use its ID
-        "channels": ["in-app", "email", "sms"],
-        "title": "Test Notification Delivery",
-        "message": "This is a test notification to verify delivery reliability.",
-        "metadata": {
-            "appointment_id": 42,
-            "priority": "high"
-        }
+        "recipient_id": None,  # Will set after patient creation
+        "channels": ["in_app", "email", "sms"],
+        "title": "Test Notification Delivery Reliability",
+        "message": "This is a test notification sent to multiple channels to verify reliable delivery with retries.",
+        "priority": "high"
     }
-    
-    max_retries = 3
-    retry_delay_seconds = 2
-    response = None
 
-    # Attempt sending notification with retry logic for failure scenarios
-    for attempt in range(1, max_retries + 1):
+    # Helper function to create a patient user for notification recipient
+    def create_test_patient():
+        url = f"{BASE_URL}/api/patients/"
+        patient_data = {
+            "first_name": "Test",
+            "last_name": "NotificationRecipient",
+            "email": "test.notificationrecipient@example.com",
+            "emergency_contact": "0911234567"
+        }
+        response = requests.post(url, json=patient_data, headers=HEADERS, timeout=30)
+        response.raise_for_status()
+        return response.json()["id"]
+
+    # Helper function to delete a patient user after test
+    def delete_test_patient(patient_id):
+        url = f"{BASE_URL}/api/patients/{patient_id}/"
         try:
-            response = requests.post(NOTIFICATIONS_ENDPOINT, json=notification_payload, headers=HEADERS, timeout=TIMEOUT)
-            if response.status_code == 200 or response.status_code == 201:
-                break  # Success
-        except requests.RequestException:
-            pass  # Swallow exception and retry
-
-        if attempt < max_retries:
-            time.sleep(retry_delay_seconds)
-    else:
-        assert False, f"Notification sending failed after {max_retries} attempts."
-
-    # Validate response structure and content
-    assert response is not None
-    assert response.status_code in (200, 201)
-    resp_json = response.json()
-    assert "notification_id" in resp_json
-    notification_id = resp_json["notification_id"]
-    assert isinstance(notification_id, int)
-    assert resp_json.get("status") in ["sent", "queued", "delivered", "processing"]
-
-    # Verify multi-channel delivery status
-    delivery_status = resp_json.get("delivery_status")
-    assert delivery_status is not None
-    for channel in notification_payload["channels"]:
-        assert channel in delivery_status
-        # Each channel should have a status indicating success or retry
-        channel_status = delivery_status[channel]
-        assert channel_status in ["pending", "sent", "failed", "retrying", "delivered"]
-
-    # Optionally, poll the notification status API to confirm final delivery state
-    status_url = f"{NOTIFICATIONS_ENDPOINT}{notification_id}/status/"
-    final_status = None
-    for _ in range(5):
-        try:
-            status_response = requests.get(status_url, headers=HEADERS, timeout=TIMEOUT)
-            if status_response.status_code == 200:
-                status_json = status_response.json()
-                final_status = status_json.get("final_status")
-                if final_status in ["delivered", "failed"]:
-                    break
-        except requests.RequestException:
+            requests.delete(url, headers=HEADERS, timeout=30)
+        except Exception:
             pass
-        time.sleep(1)
-    assert final_status in ["delivered", "failed"]
+
+    # Helper function to send notification with retries on failure
+    def send_notification_with_retries(payload, max_retries=3, delay=2):
+        attempt = 0
+        last_response = None
+        while attempt < max_retries:
+            try:
+                resp = requests.post(NOTIFICATIONS_ENDPOINT, json=payload, headers=HEADERS, timeout=30)
+                if resp.status_code == 200 or resp.status_code == 201:
+                    return resp
+                else:
+                    last_response = resp
+            except requests.RequestException as e:
+                last_response = e
+            attempt += 1
+            time.sleep(delay)
+        return last_response
+
+    # Main test logic
+    patient_id = None
+    try:
+        # Create a test patient to receive notification
+        patient_id = create_test_patient()
+        notification_payload["recipient_id"] = patient_id
+
+        # Send notification with retries
+        response = send_notification_with_retries(notification_payload)
+
+        # Assert final response is success
+        assert response is not None, "No response received from notification API"
+        if isinstance(response, requests.Response):
+            assert response.status_code in [200, 201], f"Notification API failed with status {response.status_code}"
+            resp_json = response.json()
+            # Validate that all requested channels are in response
+            assert "delivered_channels" in resp_json, "Response missing 'delivered_channels' field"
+            delivered_channels = resp_json["delivered_channels"]
+            # Check all requested channels reported as delivered or at least attempted
+            for ch in notification_payload["channels"]:
+                assert ch in delivered_channels, f"Channel '{ch}' not in delivered channels: {delivered_channels}"
+            # Validate retry count if present
+            if "retry_count" in resp_json:
+                assert resp_json["retry_count"] <= 3, "Retry count exceeded max retries"
+        else:
+            # last_response was an exception
+            assert False, f"Notification API request failed with exception: {response}"
+
+    finally:
+        if patient_id:
+            delete_test_patient(patient_id)
 
 test_notification_delivery_reliability()

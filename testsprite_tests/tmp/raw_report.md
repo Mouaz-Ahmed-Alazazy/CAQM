@@ -5,7 +5,7 @@
 
 ## 1️⃣ Document Metadata
 - **Project Name:** CAQM
-- **Date:** 2026-01-12
+- **Date:** 2026-03-03
 - **Prepared by:** TestSprite AI Team
 
 ---
@@ -20,7 +20,7 @@
   File "<string>", line 3, in <module>
 ModuleNotFoundError: No module named 'pytest'
 
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/ead86755-6582-474f-a512-8bb399ea9c25
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/7544fd57-3a87-41a9-aef5-f7f5f74937c8
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
@@ -30,14 +30,14 @@ ModuleNotFoundError: No module named 'pytest'
 - **Test Error:** Traceback (most recent call last):
   File "/var/task/handler.py", line 258, in run_with_retry
     exec(code, exec_env)
-  File "<string>", line 166, in <module>
-  File "<string>", line 81, in test_doctor_availability_scheduling_limit
-  File "<string>", line 22, in create_doctor
+  File "<string>", line 145, in <module>
+  File "<string>", line 57, in test_doctor_availability_scheduling_limit
+  File "<string>", line 11, in create_doctor
   File "/var/task/requests/models.py", line 1024, in raise_for_status
     raise HTTPError(http_error_msg, response=self)
 requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:9000/api/doctors/
 
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/812a5e50-ab08-4824-8790-18ae7868889d
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/cbb8d1dc-3129-403b-be26-28bfea2c61f8
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
@@ -47,14 +47,14 @@ requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://local
 - **Test Error:** Traceback (most recent call last):
   File "/var/task/handler.py", line 258, in run_with_retry
     exec(code, exec_env)
-  File "<string>", line 125, in <module>
-  File "<string>", line 60, in test_digital_checkin_qrcode_generation
-  File "<string>", line 16, in create_doctor
+  File "<string>", line 149, in <module>
+  File "<string>", line 97, in test_digital_checkin_qrcode_generation
+  File "<string>", line 14, in authenticate
   File "/var/task/requests/models.py", line 1024, in raise_for_status
     raise HTTPError(http_error_msg, response=self)
-requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:9000/doctors/
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:9000/api/auth/login/
 
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/5777bfa8-3417-4058-860d-e3f7e23b040a
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/6759a653-e1a9-47f1-abfa-99385dd17e3a
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
@@ -64,14 +64,14 @@ requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://local
 - **Test Error:** Traceback (most recent call last):
   File "/var/task/handler.py", line 258, in run_with_retry
     exec(code, exec_env)
-  File "<string>", line 153, in <module>
-  File "<string>", line 77, in test_real_time_queue_tracking
-  File "<string>", line 21, in create_doctor
+  File "<string>", line 184, in <module>
+  File "<string>", line 74, in test_real_time_queue_tracking
+  File "<string>", line 20, in create_doctor
   File "/var/task/requests/models.py", line 1024, in raise_for_status
     raise HTTPError(http_error_msg, response=self)
 requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:9000/api/doctors/
 
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/b4eea237-bc57-4fe6-883c-0cb85e2b83c0
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/1320b1ee-b327-451b-be0c-6ac9bb097ccd
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
@@ -81,11 +81,10 @@ requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://local
 - **Test Error:** Traceback (most recent call last):
   File "/var/task/handler.py", line 258, in run_with_retry
     exec(code, exec_env)
-  File "<string>", line 106, in <module>
-  File "<string>", line 31, in test_user_authentication_and_role_access
-AssertionError: Login failed for patient with status 404
+  File "<string>", line 2, in <module>
+ModuleNotFoundError: No module named 'pytest'
 
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/9d070824-1030-43c3-a0a3-320519db2673
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/f95847e7-f1bb-4918-b92f-49c9968c8961
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
@@ -95,14 +94,14 @@ AssertionError: Login failed for patient with status 404
 - **Test Error:** Traceback (most recent call last):
   File "/var/task/handler.py", line 258, in run_with_retry
     exec(code, exec_env)
-  File "<string>", line 119, in <module>
-  File "<string>", line 61, in test_appointment_modification_and_cancellation
-  File "<string>", line 16, in create_doctor
+  File "<string>", line 168, in <module>
+  File "<string>", line 78, in test_appointment_modification_and_cancellation
+  File "<string>", line 14, in create_patient
   File "/var/task/requests/models.py", line 1024, in raise_for_status
     raise HTTPError(http_error_msg, response=self)
-requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:9000/api/doctors/
+requests.exceptions.HTTPError: 403 Client Error: Forbidden for url: http://localhost:9000/patients/
 
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/230748ae-614a-4577-b1dd-6ccab37614bb
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/3b54313e-641a-4b51-8ab4-5171e10ae341
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
@@ -112,87 +111,11 @@ requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://local
 - **Test Error:** Traceback (most recent call last):
   File "/var/task/handler.py", line 258, in run_with_retry
     exec(code, exec_env)
-  File "<string>", line 97, in <module>
-  File "<string>", line 49, in test_emergency_contact_validation
-AssertionError: Failed to create patient with valid emergency contact. Status: 403, Response: <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <meta name="robots" content="NONE,NOARCHIVE">
-  <title>403 Forbidden</title>
-  <style type="text/css">
-    html * { padding:0; margin:0; }
-    body * { padding:10px 20px; }
-    body * * { padding:0; }
-    body { font:small sans-serif; background:#eee; color:#000; }
-    body>div { border-bottom:1px solid #ddd; }
-    h1 { font-weight:normal; margin-bottom:.4em; }
-    h1 span { font-size:60%; color:#666; font-weight:normal; }
-    #info { background:#f6f6f6; }
-    #info ul { margin: 0.5em 4em; }
-    #info p, #summary p { padding-top:10px; }
-    #summary { background: #ffc; }
-    #explanation { background:#eee; border-bottom: 0px none; }
-  </style>
-</head>
-<body>
-<div id="summary">
-  <h1>Forbidden <span>(403)</span></h1>
-  <p>CSRF verification failed. Request aborted.</p>
+  File "<string>", line 171, in <module>
+  File "<string>", line 76, in test_emergency_contact_validation
+AssertionError: Expected 201 Created for valid contact 0911234567, got 404
 
-
-  <p>You are seeing this message because this site requires a CSRF cookie when submitting forms. This cookie is required for security reasons, to ensure that your browser is not being hijacked by third parties.</p>
-  <p>If you have configured your browser to disable cookies, please re-enable them, at least for this site, or for “same-origin” requests.</p>
-
-</div>
-
-<div id="info">
-  <h2>Help</h2>
-    
-    <p>Reason given for failure:</p>
-    <pre>
-    CSRF cookie not set.
-    </pre>
-    
-
-  <p>In general, this can occur when there is a genuine Cross Site Request Forgery, or when
-  <a
-  href="https://docs.djangoproject.com/en/5.0/ref/csrf/">Django’s
-  CSRF mechanism</a> has not been used correctly.  For POST forms, you need to
-  ensure:</p>
-
-  <ul>
-    <li>Your browser is accepting cookies.</li>
-
-    <li>The view function passes a <code>request</code> to the template’s <a
-    href="https://docs.djangoproject.com/en/dev/topics/templates/#django.template.backends.base.Template.render"><code>render</code></a>
-    method.</li>
-
-    <li>In the template, there is a <code>{% csrf_token
-    %}</code> template tag inside each POST form that
-    targets an internal URL.</li>
-
-    <li>If you are not using <code>CsrfViewMiddleware</code>, then you must use
-    <code>csrf_protect</code> on any views that use the <code>csrf_token</code>
-    template tag, as well as those that accept the POST data.</li>
-
-    <li>The form has a valid CSRF token. After logging in in another browser
-    tab or hitting the back button after a login, you may need to reload the
-    page with the form, because the token is rotated after a login.</li>
-  </ul>
-
-  <p>You’re seeing the help section of this page because you have <code>DEBUG =
-  True</code> in your Django settings file. Change that to <code>False</code>,
-  and only the initial error message will be displayed.  </p>
-
-  <p>You can customize this page using the CSRF_FAILURE_VIEW setting.</p>
-</div>
-
-</body>
-</html>
-
-
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/affba054-e430-4489-85c0-3fcac52c20c1
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/966a5e88-147a-4f65-ab3c-d7e6695082ba
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
@@ -202,11 +125,14 @@ AssertionError: Failed to create patient with valid emergency contact. Status: 4
 - **Test Error:** Traceback (most recent call last):
   File "/var/task/handler.py", line 258, in run_with_retry
     exec(code, exec_env)
-  File "<string>", line 82, in <module>
-  File "<string>", line 46, in test_notification_delivery_reliability
-AssertionError: Notification sending failed after 3 attempts.
+  File "<string>", line 93, in <module>
+  File "<string>", line 65, in test_notification_delivery_reliability
+  File "<string>", line 33, in create_test_patient
+  File "/var/task/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:9000/api/patients/
 
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/adaec124-c08f-4b89-9172-516acce2e656
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/050c50fc-d300-4589-934d-eb008b130cf6
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
@@ -216,156 +142,10 @@ AssertionError: Notification sending failed after 3 attempts.
 - **Test Error:** Traceback (most recent call last):
   File "/var/task/handler.py", line 258, in run_with_retry
     exec(code, exec_env)
-  File "<string>", line 120, in <module>
-  File "<string>", line 29, in test_patient_feedback_submission
-AssertionError: Failed to submit feedback: <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <title>Page not found at /api/patients/feedback/</title>
-  <meta name="robots" content="NONE,NOARCHIVE">
-  <style type="text/css">
-    html * { padding:0; margin:0; }
-    body * { padding:10px 20px; }
-    body * * { padding:0; }
-    body { font:small sans-serif; background:#eee; color:#000; }
-    body>div { border-bottom:1px solid #ddd; }
-    h1 { font-weight:normal; margin-bottom:.4em; }
-    h1 span { font-size:60%; color:#666; font-weight:normal; }
-    table { border:none; border-collapse: collapse; width:100%; }
-    td, th { vertical-align:top; padding:2px 3px; }
-    th { width:12em; text-align:right; color:#666; padding-right:.5em; }
-    #info { background:#f6f6f6; }
-    #info ol { margin: 0.5em 4em; }
-    #info ol li { font-family: monospace; }
-    #summary { background: #ffc; }
-    #explanation { background:#eee; border-bottom: 0px none; }
-    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }
-  </style>
-</head>
-<body>
-  <div id="summary">
-    <h1>Page not found <span>(404)</span></h1>
-    
-    <table class="meta">
-      <tr>
-        <th>Request Method:</th>
-        <td>POST</td>
-      </tr>
-      <tr>
-        <th>Request URL:</th>
-        <td>http://localhost:9000/api/patients/feedback/</td>
-      </tr>
-      
-    </table>
-  </div>
-  <div id="info">
-    
-      <p>
-      Using the URLconf defined in <code>caqm_project.urls</code>,
-      Django tried these URL patterns, in this order:
-      </p>
-      <ol>
-        
-          <li>
-            
-                admin/
-                
-            
-          </li>
-        
-          <li>
-            
-                accounts/
-                
-            
-          </li>
-        
-          <li>
-            
-                admins/
-                
-            
-          </li>
-        
-          <li>
-            
-                appointments/
-                
-            
-          </li>
-        
-          <li>
-            
-                patients/
-                
-            
-          </li>
-        
-          <li>
-            
-                doctors/
-                
-            
-          </li>
-        
-          <li>
-            
-                queues/
-                
-            
-          </li>
-        
-          <li>
-            
-                nurses/
-                
-            
-          </li>
-        
-          <li>
-            
-                
-                
-            
-          </li>
-        
-          <li>
-            
-                ^static/(?P&lt;path&gt;.*)$
-                
-            
-          </li>
-        
-          <li>
-            
-                ^media/(?P&lt;path&gt;.*)$
-                
-            
-          </li>
-        
-      </ol>
-      <p>
-        
-          The current path, <code>api/patients/feedback/</code>,
-        
-        didn’t match any of these.
-      </p>
-    
-  </div>
+  File "<string>", line 2, in <module>
+ModuleNotFoundError: No module named 'pytest'
 
-  <div id="explanation">
-    <p>
-      You’re seeing this error because you have <code>DEBUG = True</code> in
-      your Django settings file. Change that to <code>False</code>, and Django
-      will display a standard 404 page.
-    </p>
-  </div>
-</body>
-</html>
-
-
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/08237661-b8ed-4032-bec1-e0fdb76aa528
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/f86fb2ba-d022-40a1-9bec-c7cedd400c55
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
@@ -373,22 +153,13 @@ AssertionError: Failed to submit feedback: <!DOCTYPE html>
 #### Test TC010 admin_announcement_broadcast
 - **Test Code:** [TC010_admin_announcement_broadcast.py](./TC010_admin_announcement_broadcast.py)
 - **Test Error:** Traceback (most recent call last):
-  File "<string>", line 22, in get_admin_token
-  File "/var/task/requests/models.py", line 1024, in raise_for_status
-    raise HTTPError(http_error_msg, response=self)
-requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:9000/api/token/
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
   File "/var/task/handler.py", line 258, in run_with_retry
     exec(code, exec_env)
-  File "<string>", line 113, in <module>
-  File "<string>", line 77, in test_admin_announcement_broadcast
-  File "<string>", line 24, in get_admin_token
-AssertionError: Failed to authenticate admin user: 404 Client Error: Not Found for url: http://localhost:9000/api/token/
+  File "<string>", line 81, in <module>
+  File "<string>", line 35, in test_admin_announcement_broadcast
+AssertionError: Expected 201 Created, got 404
 
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/14d42bad-3783-4357-b5a2-b83f83c5dd91/2a402d9f-e324-4c48-ba20-e1bc6f6891a2
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/77066c21-191f-4750-bc86-aa4bba542f2b/65ba078e-769e-4c41-96f0-3010fd961325
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
